@@ -1,0 +1,338 @@
+name: Crate CI/CD
+
+on:
+  workflow_call:
+    inputs:
+      profile:
+        description: 'Profile to use (minimal / default)'
+        required: true
+        default: 'minimal'
+        type: string
+      toolchain:
+        description: 'Toolchain to install (stable / beta / nightly / <specific version>)'
+        required: true
+        default: 'stable'
+        type: string
+      components:
+        description: 'Components to install with the toolchain'
+        required: false
+        type: string
+      override:
+        description: 'Whether or not to override the default toolchain'
+        required: false
+        type: boolean
+      deploy:
+        description: "Do we deploy"
+        required: false
+        default: true
+        type: boolean
+      tests_path:
+        description: "The path to the directory where the tests exists (if not /src)"
+        required: false
+        type: string
+    outputs:
+      ci_skip: ${{ steps.check_conditions.outputs.ci_skip }}
+      cargo_toml_modified: ${{ steps.check_conditions.outputs.cargo_toml_modified }}
+      src_modified: ${{ steps.check_conditions.outputs.src_modified }}
+      tests_modified: ${{ steps.check_conditions.outputs.tests_modified }}
+      pr_sha: ${{ steps.check_conditions.outputs.pr_sha }}
+      base_sha: ${{ steps.check_conditions.outputs.base_sha }}
+      version: ${{ steps.version.outputs.version }}
+      version_bumped: ${{ steps.version.outputs.bump }}
+      is_pr: ${{ steps.check_conditions.outputs.is_pr }}
+    secrets:
+      CRATES_IO_TOKEN:
+        required: true
+      GH_RELEASE_TOKEN:
+        required: true
+    
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      ci_skip: ${{ steps.check_conditions.outputs.ci_skip }}
+      cargo_toml_modified: ${{ steps.check_conditions.outputs.cargo_toml_modified }}
+      src_modified: ${{ steps.check_conditions.outputs.src_modified }}
+      tests_modified: ${{ steps.check_conditions.outputs.tests_modified }}
+      pr_sha: ${{ github.event.pull_request.head.sha }}
+      base_sha: ${{ steps.check_conditions.outputs.base_sha }}
+      is_pr: ${{ steps.check_conditions.outputs.is_pr }}
+    steps:
+      - name: Check conditions and set outputs
+        id: check_conditions
+        run: |
+          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            PR_SHA="${{ github.event.pull_request.head.sha }}"
+            IS_PR=true
+          else
+            PR_SHA="${GITHUB_SHA}"
+            IS_PR=false
+          fi
+          MODIFIED_FILES=$(git diff-tree --no-commit-id --name-only -r ${PR_SHA})
+          echo "::set-output name=base_sha::${GITHUB_SHA}"
+          echo "::set-output name=pr_sha::${PR_SHA}"
+          echo "::set-output name=ci_skip::$(echo ${COMMIT_MSG} | grep -q '\[ci skip\]' && echo true || echo false)"
+          echo "::set-output name=cargo_toml_modified::$(echo ${MODIFIED_FILES} | grep -q '\*\*/Cargo.toml' && echo true || echo false)"
+          echo "::set-output name=src_modified::$(echo ${MODIFIED_FILES} | grep -q 'src/' && echo true || echo false)"
+          echo "::set-output name=tests_modified::$(echo ${MODIFIED_FILES} | grep -q ${{ inputs.tests_path }} && echo true || echo false)"
+          echo "::set-output name=is_pr::$IS_PR
+          
+          if [[ -z "${{ secrets.GH_RELEASE_TOKEN }}" && -z "${{ secrets.GITHUB_TOKEN }}" ]]; then
+            echo "::error::Release tokens do not exist or is empty."
+            echo "::info::Make sure you provide either one of these"
+            echo "::info::Make sure either of the tokens has proper release rights, also."
+            exit 1
+          fi
+          
+          
+  build:
+    needs: setup
+    runs-on: ubuntu-latest
+    if: |
+      (needs.setup.outputs.ci_skip == 'false' &&
+      (needs.setup.outputs.cargo_toml_modified == 'true' ||
+      needs.setup.outputs.src_modified == 'true'))
+    steps:
+      - name: Init crate workflow
+        uses: ./.github/actions/init_crate_workflow
+        with:
+          profile: ${{ inputs.profile }}
+          toolchain: ${{ inputs.toolchain }}
+          components: ${{ inputs.components }}
+          override: ${{ inputs.override }}
+          
+      - name: Formatting
+        run: |
+          set -e
+          set -o pipefail
+          rustup component add rustfmt
+          cargo fmt -- --check
+
+      - name: Lints
+        run: |
+          set -e
+          set -o pipefail
+          rustup component add clippy
+          cargo clippy -- -D warnings
+          
+      - name: Build
+        run: cargo build #--release
+
+      - name: Check for warnings
+        run: cargo rustc -- -D warnings
+        
+          
+  test:
+    needs: [setup, build]
+    runs-on: ubuntu-latest
+    if: |
+      (needs.setup.outputs.ci_skip == 'false' &&
+      (needs.setup.outputs.cargo_toml_modified == 'true' ||
+      needs.setup.outputs.src_modified == 'true' ||
+      needs.setup.outputs.tests_modified == 'true'))
+    steps:
+      - name: Init crate workflow
+        uses: ./.github/actions/init_crate_workflow
+        with:
+          profile: ${{ inputs.profile }}
+          toolchain: ${{ inputs.toolchain }}
+          components: ${{ inputs.components }}
+          override: ${{ inputs.override }}
+
+      - name: Run tests
+        if: github.ref != 'refs/heads/main'
+        run: |
+          set -e
+          set -o pipefail
+          cargo test --all
+          
+      - name: Run tests, generate code coverage and save as artifact
+        if: github.ref == 'refs/heads/main'
+        run: |
+          set -e
+          set -o pipefail
+          cargo install cargo-tarpaulin
+          cargo tarpaulin --out Xml
+        id: coverage
+
+      - name: Upload coverage to GitHub Artifacts
+        uses: actions/upload-artifact@v2
+        if: github.ref == 'refs/heads/main'
+        with:
+          name: code-coverage-report
+          path: target/debug/tarpaulin-report.xml
+          
+          
+  deploy:
+    needs: [setup, build, test]
+    runs-on: ubuntu-latest
+    if: |
+      needs.setup.outputs.ci_skip == 'false' &&
+      needs.setup.outputs.is_pr == 'false' &&
+      github.event_name == 'push'
+    steps:
+      - name: Init crate workflow
+        uses: ./.github/actions/init_crate_workflow
+        with:
+          profile: ${{ inputs.profile }}
+          toolchain: ${{ inputs.toolchain }}
+          components: ${{ inputs.components }}
+          override: ${{ inputs.override }}
+        
+      - name: Documentation
+        run: |
+          set -e
+          set -o pipefail
+          cargo doc --no-deps
+          
+      - name: Install cargo-release
+        run: cargo install cargo-release
+
+      - name: Configure git user
+        run: |
+          set -e
+          set -o pipefail
+          git config --local user.name "GitHub Action"
+          git config --local user.email "action@github.com"
+          
+      - name: Setup cargo publish token
+        run: |
+          mkdir -p ~/.cargo
+          echo "[registry]" > ~/.cargo/credentials
+          echo "token = \"${{ secrets.CRATES_IO_TOKEN }}\"" >> ~/.cargo/credentials
+          
+      - name: Check for manual version change
+        id: version
+        run: |
+          set -e
+          set -o pipefail
+          VERSION=$(awk -F' = ' '/^version/ {print $2}' Cargo.toml | tr -d '"')
+          OLD_VERSION=$(git describe --abbrev=0 --tags | awk -F' = ' '/^version/ {print $2}' | tr -d '"' )
+
+          if [ "$VERSION" != "$OLD_VERSION" || ${{ inputs.auto_bump }} == 'true']
+          then
+            echo "::set-output name=bump::true"
+          else
+            echo "::set-output name=bump::false"
+          fi
+          
+          echo "::set-output name=version::$(grep '^version =' Cargo.toml | head -1 | awk '{print $3}' | sed 's/\"//g')"
+          
+      - name: Automatic version bump and deploy
+        if: |
+          steps.version.outputs.bump == 'false' &&
+          inputs.auto_bump == 'true' &&
+          inputs.deploy == 'true'
+        run: |
+          set -e
+          set -o pipefail
+          cargo release patch --no-dev-version --no-confirm --push
+          
+      - name: Can't auto-bump
+        if: |
+          steps.version.outputs.bump == 'false' &&
+          inputs.auto_bump == 'true' &&
+          inputs.deploy == 'false'
+        run: |
+          set -e
+          set -o pipefail
+          echo "::warning::Auto-bump set to true, but no deploy flag was set for this workflow run. Not bumping version."
+          echo "::info::If you intended to deploy, make sure to set the flag to true"
+      
+      - name: Deploy
+        if: |
+          steps.version.outputs.bump == 'true' && 
+          inputs.auto_bump == 'false' &&
+          inputs.deploy == 'true'
+        run: cargo publish --token ${CRATES_TOKEN}
+        env:
+          CRATES_TOKEN: ${{secrets.CRATES_IO_TOKEN}}
+          
+      - name: Skip deploy
+        if: |
+          steps.version.outputs.bump == 'false' &&
+          inputs.auto_bump == 'false' &&
+          inputs.deploy == 'true'
+        run: |
+          set -e
+          set -o pipefail
+          echo "::warning::No version bump detected on Cargo.toml, so skipping deploy."
+          echo "::info::If you intended to deploy, make sure to bump the version too."
+          
+      - name: Commit and Tag Version Bump
+        if: |
+          (steps.version.outputs.bump == 'true' || inputs.auto_bump == 'false') && 
+          inputs.deploy == 'true'
+        run: |
+          set -e
+          set -o pipefail
+          git add .
+          if [[ `git status --porcelain --untracked-files=no` ]]; then
+            git commit -m "chore: version bump to ${{ steps.version.outputs.version }}"
+          else
+            echo "No changes to commit"
+          fi
+          git tag ${{ steps.version.outputs.version }}
+          
+      - name: Commit and Tag if Auto Version Bump
+        if: |
+          steps.version.outputs.bump == 'false' &&
+          inputs.auto_bump == 'true' &&
+          inputs.deploy == 'true'
+        run: |
+          set -e
+          set -o pipefail
+          if [[ `git status --porcelain --untracked-files=no` ]]; then
+            git add .
+            git commit -m "chore: auto version bump to ${{ steps.version.outputs.version }}"
+          else
+            echo "No changes to commit or already covered by `cargo-release`"
+          fi
+          
+      - name: Push Tags
+        if: |
+          (steps.version.outputs.bump == 'true' && inputs.auto_bump == 'false') && 
+          inputs.deploy == 'true'
+        run: git push origin --tags
+          
+      - name: Create GitHub Release
+        id: create_release
+        if: |
+          (steps.version.outputs.bump == 'true' || inputs.auto_bump == 'true') && 
+          inputs.deploy == 'true'
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: |
+            ${{ secrets.GH_RELEASE_TOKEN != null || secrets.GH_RELEASE_TOKEN != false && 
+            secrets.GH_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          release_name: Release ${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+          
+      - name: Check if we need to checkout pushed tags
+        id: checkout_check
+        if: |
+          (steps.version.outputs.bump == 'true' || inputs.auto_bump == 'true') && 
+          inputs.deploy == 'true'
+        run: |
+          if git ls-remote --tags --exit-code origin refs/tags/${{ steps.version.outputs.version }}
+          then
+            echo "Tag already exists on the remote"
+            echo "::set-output name=needs_checkout::false"
+          else
+            echo "No tag in the remote, proceeding with checkout..."
+            echo "::set-output name=needs_checkout::true"
+          fi
+
+      - name: Checkout pushed tags
+        needs: checkout_check
+        if: |
+          inputs.deploy == 'true' &&
+          steps.checkout_check.outputs.needs_checkout == 'true'
+        uses: actions/checkout@v2.3.4
+        with:
+          ref: ${{ steps.version.outputs.version }}

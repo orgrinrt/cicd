@@ -1,2 +1,2 @@
-# cicd
-Reusable github actions and workflows 
+# cicd (WIP)
+Dogfooded, reusable github actions and workflows WIP
