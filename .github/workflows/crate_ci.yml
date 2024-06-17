@@ -80,7 +80,7 @@ jobs:
           echo "::set-output name=cargo_toml_modified::$(echo ${MODIFIED_FILES} | grep -q '\*\*/Cargo.toml' && echo true || echo false)"
           echo "::set-output name=src_modified::$(echo ${MODIFIED_FILES} | grep -q 'src/' && echo true || echo false)"
           echo "::set-output name=tests_modified::$(echo ${MODIFIED_FILES} | grep -q ${{ inputs.tests_path }} && echo true || echo false)"
-          echo "::set-output name=is_pr::$IS_PR
+          echo "::set-output name=is_pr::$IS_PR"
           
           if [[ -z "${{ secrets.GH_RELEASE_TOKEN }}" && -z "${{ secrets.GITHUB_TOKEN }}" ]]; then
             echo "::error::Release tokens do not exist or is empty."
