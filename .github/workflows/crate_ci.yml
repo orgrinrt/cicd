@@ -31,15 +31,15 @@ on:
         required: false
         type: string
     outputs:
-      ci_skip: ${{ steps.check_conditions.outputs.ci_skip }}
-      cargo_toml_modified: ${{ steps.check_conditions.outputs.cargo_toml_modified }}
-      src_modified: ${{ steps.check_conditions.outputs.src_modified }}
-      tests_modified: ${{ steps.check_conditions.outputs.tests_modified }}
-      pr_sha: ${{ steps.check_conditions.outputs.pr_sha }}
-      base_sha: ${{ steps.check_conditions.outputs.base_sha }}
-      version: ${{ steps.version.outputs.version }}
-      version_bumped: ${{ steps.version.outputs.bump }}
-      is_pr: ${{ steps.check_conditions.outputs.is_pr }}
+      ci_skip: ${{ jobs.setup.outputs.ci_skip }}
+      cargo_toml_modified: ${{ jobs.setup.outputs.cargo_toml_modified }}
+      src_modified: ${{ jobs.setup.outputs.src_modified }}
+      tests_modified: ${{ jobs.setup.outputs.tests_modified }}
+      pr_sha: ${{ jobs.setup.outputs.pr_sha }}
+      base_sha: ${{ jobs.setup.outputs.base_sha }}
+      version: ${{ jobs.deploy.outputs.version }}
+      version_bumped: ${{ jobs.deploy.outputs.version_bumped }}
+      is_pr: ${{ jobs.setup.outputs.is_pr }}
     secrets:
       CRATES_IO_TOKEN:
         required: true
