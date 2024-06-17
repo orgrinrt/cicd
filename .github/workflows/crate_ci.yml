@@ -329,7 +329,6 @@ jobs:
           fi
 
       - name: Checkout pushed tags
-        needs: checkout_check
         if: |
           inputs.deploy == 'true' &&
           steps.checkout_check.outputs.needs_checkout == 'true'
