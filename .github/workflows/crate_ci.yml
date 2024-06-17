@@ -59,6 +59,9 @@ jobs:
       base_sha: ${{ steps.check_conditions.outputs.base_sha }}
       is_pr: ${{ steps.check_conditions.outputs.is_pr }}
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        
       - name: Check conditions and set outputs
         id: check_conditions
         run: |
