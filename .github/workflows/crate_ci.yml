@@ -30,16 +30,16 @@ on:
         description: "The path to the directory where the tests exists (if not /src)"
         required: false
         type: string
-    outputs:
-      ci_skip: ${{ jobs.setup.outputs.ci_skip }}
-      cargo_toml_modified: ${{ jobs.setup.outputs.cargo_toml_modified }}
-      src_modified: ${{ jobs.setup.outputs.src_modified }}
-      tests_modified: ${{ jobs.setup.outputs.tests_modified }}
-      pr_sha: ${{ jobs.setup.outputs.pr_sha }}
-      base_sha: ${{ jobs.setup.outputs.base_sha }}
-      version: ${{ jobs.deploy.outputs.version }}
-      version_bumped: ${{ jobs.deploy.outputs.version_bumped }}
-      is_pr: ${{ jobs.setup.outputs.is_pr }}
+#    outputs:
+#      ci_skip: ${{ jobs.setup.outputs.ci_skip }}
+#      cargo_toml_modified: ${{ jobs.setup.outputs.cargo_toml_modified }}
+#      src_modified: ${{ jobs.setup.outputs.src_modified }}
+#      tests_modified: ${{ jobs.setup.outputs.tests_modified }}
+#      pr_sha: ${{ jobs.setup.outputs.pr_sha }}
+#      base_sha: ${{ jobs.setup.outputs.base_sha }}
+#      version: ${{ jobs.deploy.outputs.version }}
+#      version_bumped: ${{ jobs.deploy.outputs.version_bumped }}
+#      is_pr: ${{ jobs.setup.outputs.is_pr }}
     secrets:
       CRATES_IO_TOKEN:
         required: true
