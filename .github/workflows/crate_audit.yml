@@ -1,8 +1,7 @@
 name: Crate audit
 
 on:
-  pull_request:
-    types: [synchronize, opened, reopened]
+  workflow_call:
 
 jobs:
   cargo_audit_and_deny:
