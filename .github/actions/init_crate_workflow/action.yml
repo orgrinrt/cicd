@@ -23,13 +23,16 @@ inputs:
 runs:
   using: 'composite'
   steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
     - name: Cache Cargo Directories
-      uses: ./.github/actions/cache_cargo
+      uses: orgrinrt/cicd/.github/actions/cache_cargo
       with:
         cache-key-prefix: ${{ inputs.key-prefix }}
 
     - name: Install Rust
-      uses: ./.github/actions/install_rust
+      uses: orgrinrt/cicd/.github/actions/install_rust
       with:
         profile: ${{ inputs.profile }}
         toolchain: ${{ inputs.toolchain }}
