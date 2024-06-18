@@ -142,7 +142,7 @@ jobs:
 
           # Compare the changes and output in a readable diff format
           for file in $(find . -name '*.rs'); do
-              diff -u $file.bak $file || true
+              diff -U0 --minimal $file.bak $file || true
               rm $file.bak
           done
 
