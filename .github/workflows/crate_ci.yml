@@ -115,7 +115,7 @@ jobs:
     if: |
       (needs.setup.outputs.ci_skip == 'false' &&
       (needs.setup.outputs.cargo_toml_modified == 'true' ||
-      needs.setup.outputs.src_modified == 'true')) || inputs.force_build == 'true'
+      needs.setup.outputs.src_modified == 'true')) || inputs.force_build == true
     steps:
       - name: Init crate workflow
         uses: ./.github/actions/init_crate_workflow
@@ -153,7 +153,7 @@ jobs:
       (needs.setup.outputs.ci_skip == 'false' &&
       (needs.setup.outputs.cargo_toml_modified == 'true' ||
       needs.setup.outputs.src_modified == 'true' ||
-      needs.setup.outputs.tests_modified == 'true')) || inputs.force_tests == 'true'
+      needs.setup.outputs.tests_modified == 'true')) || inputs.force_tests == true
     steps:
       - name: Init crate workflow
         uses: ./.github/actions/init_crate_workflow
@@ -193,7 +193,7 @@ jobs:
     if: |
       (needs.setup.outputs.ci_skip == 'false' &&
       needs.setup.outputs.is_pr == 'false' &&
-      github.event_name == 'push') || inputs.force_deploy == 'true'
+      github.event_name == 'push') || inputs.force_deploy == true
     steps:
       - name: Init crate workflow
         uses: ./.github/actions/init_crate_workflow
