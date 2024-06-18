@@ -138,7 +138,7 @@ jobs:
           done
 
           # Format the code
-          cargo fmt
+          cargo fmt >/dev/null
 
           # Compare the changes and output in a readable diff format
           for file in $(find . -name '*.rs'); do
