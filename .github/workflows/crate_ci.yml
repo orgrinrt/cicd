@@ -30,6 +30,21 @@ on:
         description: "The path to the directory where the tests exists (if not /src)"
         required: false
         type: string
+      force_build:
+        description: "Whether or not to run build job despite having no changes to source or cargo.toml"
+        required: false
+        type: boolean
+        default: false
+      force_tests:
+        description: "Whether or not to run test job despite having no changes to source/tests or cargo.toml"
+        required: false
+        type: boolean
+        default: false
+      force_deploy:
+        description: "Whether or not to force deploy job"
+        required: false
+        type: boolean
+        default: false
 #    outputs:
 #      ci_skip: ${{ jobs.setup.outputs.ci_skip }}
 #      cargo_toml_modified: ${{ jobs.setup.outputs.cargo_toml_modified }}
@@ -96,7 +111,7 @@ jobs:
     if: |
       (needs.setup.outputs.ci_skip == 'false' &&
       (needs.setup.outputs.cargo_toml_modified == 'true' ||
-      needs.setup.outputs.src_modified == 'true'))
+      needs.setup.outputs.src_modified == 'true')) || inputs.force_build == 'true'
     steps:
       - name: Init crate workflow
         uses: ./.github/actions/init_crate_workflow
@@ -134,7 +149,7 @@ jobs:
       (needs.setup.outputs.ci_skip == 'false' &&
       (needs.setup.outputs.cargo_toml_modified == 'true' ||
       needs.setup.outputs.src_modified == 'true' ||
-      needs.setup.outputs.tests_modified == 'true'))
+      needs.setup.outputs.tests_modified == 'true')) || inputs.force_tests == 'true'
     steps:
       - name: Init crate workflow
         uses: ./.github/actions/init_crate_workflow
@@ -172,9 +187,9 @@ jobs:
     needs: [setup, build, test]
     runs-on: ubuntu-latest
     if: |
-      needs.setup.outputs.ci_skip == 'false' &&
+      (needs.setup.outputs.ci_skip == 'false' &&
       needs.setup.outputs.is_pr == 'false' &&
-      github.event_name == 'push'
+      github.event_name == 'push') || inputs.force_deploy == 'true'
     steps:
       - name: Init crate workflow
         uses: ./.github/actions/init_crate_workflow
