@@ -104,6 +104,10 @@ jobs:
             exit 1
           fi
           
+          echo "::info::Force build is set to ${{ inputs.force_build }}"
+          echo "::info::Force tests is set to ${{ inputs.force_tests }}"
+          echo "::info::Force deploy is set to ${{ inputs.force_deploy }}"
+          
           
   build:
     needs: setup
