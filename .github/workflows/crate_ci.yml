@@ -117,6 +117,9 @@ jobs:
       (needs.setup.outputs.cargo_toml_modified == 'true' ||
       needs.setup.outputs.src_modified == 'true')) || inputs.force_build == true
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        
       - name: Init crate workflow
         uses: ./.github/actions/init_crate_workflow
         with:
@@ -155,6 +158,9 @@ jobs:
       needs.setup.outputs.src_modified == 'true' ||
       needs.setup.outputs.tests_modified == 'true')) || inputs.force_tests == true
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        
       - name: Init crate workflow
         uses: ./.github/actions/init_crate_workflow
         with:
@@ -195,6 +201,9 @@ jobs:
       needs.setup.outputs.is_pr == 'false' &&
       github.event_name == 'push') || inputs.force_deploy == true
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        
       - name: Init crate workflow
         uses: ./.github/actions/init_crate_workflow
         with:
