@@ -124,13 +124,33 @@ jobs:
           toolchain: ${{ inputs.toolchain }}
           components: ${{ inputs.components }}
           override: ${{ inputs.override }}
-          
+
       - name: Formatting
         run: |
           set -e
           set -o pipefail
+          
           rustup component add rustfmt
-          cargo fmt -- --check
+
+          # Create a backup of current state
+          for file in $(find . -name '*.rs'); do
+            cp $file{,.bak}
+          done
+
+          # Format the code
+          cargo fmt
+
+          # Compare the changes and output in a readable diff format
+          for file in $(find . -name '*.rs'); do
+              diff -u $file.bak $file || true
+              rm $file.bak
+          done
+
+          # Reset formatted files, to not include actual formatting in the commit
+          git checkout .
+
+          # Check if formatting is correct, will exit with code 1 if not, failing the step
+          cargo fmt -- --check >/dev/null
 
       - name: Lints
         run: |
