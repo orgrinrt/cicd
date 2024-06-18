@@ -1,6 +1,10 @@
 name: Init repo for a cargo crate workflow
 description: 'Initialize the workflow for a cargo crate (i.e checkout repo, cache cargo, install rust)'
 inputs:
+  ref:
+    description: 'Which tag of this workflow call is used (should be the same as at the end of the `uses` field!)'
+    required: true
+    default: "main"
   profile:
     description: 'Profile to use (minimal / default)'
     required: true
@@ -27,12 +31,12 @@ runs:
       uses: actions/checkout@v2
 
     - name: Cache Cargo Directories
-      uses: orgrinrt/cicd/.github/actions/cache_cargo
+      uses: orgrinrt/cicd/.github/actions/cache_cargo@${{ inputs.ref }}
       with:
         cache-key-prefix: ${{ inputs.key-prefix }}
 
     - name: Install Rust
-      uses: orgrinrt/cicd/.github/actions/install_rust
+      uses: orgrinrt/cicd/.github/actions/install_rust@${{ inputs.ref }}
       with:
         profile: ${{ inputs.profile }}
         toolchain: ${{ inputs.toolchain }}

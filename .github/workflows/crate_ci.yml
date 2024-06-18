@@ -3,6 +3,11 @@ name: Crate CI/CD
 on:
   workflow_call:
     inputs:
+      ref:
+        description: 'Which tag of this workflow call is used (should be the same as at the end of the `uses` field!)'
+        required: true
+        default: "main"
+        type: string
       profile:
         description: 'Profile to use (minimal / default)'
         required: true
@@ -118,12 +123,13 @@ jobs:
       needs.setup.outputs.src_modified == 'true')) || inputs.force_build == true
     steps:
       - name: Init crate workflow
-        uses: orgrinrt/cicd/.github/actions/init_crate_workflow
+        uses: orgrinrt/cicd/.github/actions/init_crate_workflow@${{ inputs.ref }}
         with:
           profile: ${{ inputs.profile }}
           toolchain: ${{ inputs.toolchain }}
           components: ${{ inputs.components }}
           override: ${{ inputs.override }}
+          ref: ${{ inputs.ref }}
           
       - name: Formatting
         run: |
@@ -156,12 +162,13 @@ jobs:
       needs.setup.outputs.tests_modified == 'true')) || inputs.force_tests == true
     steps:
       - name: Init crate workflow
-        uses: orgrinrt/cicd/.github/actions/init_crate_workflow
+        uses: orgrinrt/cicd/.github/actions/init_crate_workflow@@${{ inputs.ref }}
         with:
           profile: ${{ inputs.profile }}
           toolchain: ${{ inputs.toolchain }}
           components: ${{ inputs.components }}
           override: ${{ inputs.override }}
+          ref: ${{ inputs.ref }}
 
       - name: Run tests
         if: github.ref != 'refs/heads/main'
@@ -196,12 +203,13 @@ jobs:
       github.event_name == 'push') || inputs.force_deploy == true
     steps:
       - name: Init crate workflow
-        uses: orgrinrt/cicd/.github/actions/init_crate_workflow
+        uses: orgrinrt/cicd/.github/actions/init_crate_workflow@@${{ inputs.ref }}
         with:
           profile: ${{ inputs.profile }}
           toolchain: ${{ inputs.toolchain }}
           components: ${{ inputs.components }}
           override: ${{ inputs.override }}
+          ref: ${{ inputs.ref }}
         
       - name: Documentation
         run: |
