@@ -21,8 +21,8 @@ on:
         description: 'Whether or not to override the default toolchain'
         required: false
         type: boolean
-      deploy:
-        description: "Do we deploy"
+      deploy_cratesio:
+        description: "Do we deploy to cargo"
         required: false
         default: true
         type: boolean
@@ -222,7 +222,7 @@ jobs:
       ((needs.setup.outputs.ci_skip == 'false' || needs.setup.outputs.ci_skip == false) &&
       (needs.setup.outputs.is_pr == 'false' || needs.setup.outputs.is_pr == false) &&
       (github.event_name == 'push' && github.ref == 'refs/heads/main') && 
-      (inputs.deploy != false || inputs.deploy != 'false')) || 
+      (inputs.deploy_cratesio != false || inputs.deploy_cratesio != 'false')) || 
       (inputs.force_deploy == true || inputs.force_deploy == 'true')
     steps:
       - name: Init crate workflow
@@ -276,7 +276,7 @@ jobs:
         if: |
           steps.version.outputs.bump == 'false' &&
           inputs.auto_bump == 'true' &&
-          inputs.deploy == 'true'
+          inputs.deploy_cratesio == 'true'
         run: |
           set -e
           set -o pipefail
@@ -286,18 +286,20 @@ jobs:
         if: |
           steps.version.outputs.bump == 'false' &&
           inputs.auto_bump == 'true' &&
-          inputs.deploy == 'false'
+          inputs.deploy_cratesio == 'false'
         run: |
           set -e
           set -o pipefail
-          echo "::warning::Auto-bump set to true, but no deploy flag was set for this workflow run. Not bumping version."
-          echo "::info::If you intended to deploy, make sure to set the flag to true"
+          echo "::warning::Auto-bump set to true, but no deploy_cratesio flag was set for this workflow run. Not 
+          bumping 
+          version."
+          echo "::info::If you intended to deploy to crates.io, make sure to set the flag to true"
       
       - name: Deploy
         if: |
           steps.version.outputs.bump == 'true' && 
           inputs.auto_bump == 'false' &&
-          inputs.deploy == 'true'
+          inputs.deploy_cratesio == 'true'
         run: cargo publish --token ${CRATES_TOKEN}
         env:
           CRATES_TOKEN: ${{secrets.CRATES_IO_TOKEN}}
@@ -306,7 +308,7 @@ jobs:
         if: |
           steps.version.outputs.bump == 'false' &&
           inputs.auto_bump == 'false' &&
-          inputs.deploy == 'true'
+          inputs.deploy_cratesio == 'true'
         run: |
           set -e
           set -o pipefail
@@ -316,7 +318,7 @@ jobs:
       - name: Commit and Tag Version Bump
         if: |
           (steps.version.outputs.bump == 'true' || inputs.auto_bump == 'false') && 
-          inputs.deploy == 'true'
+          inputs.deploy_cratesio == 'true'
         run: |
           set -e
           set -o pipefail
@@ -332,7 +334,7 @@ jobs:
         if: |
           steps.version.outputs.bump == 'false' &&
           inputs.auto_bump == 'true' &&
-          inputs.deploy == 'true'
+          inputs.deploy_cratesio == 'true'
         run: |
           set -e
           set -o pipefail
@@ -346,14 +348,14 @@ jobs:
       - name: Push Tags
         if: |
           (steps.version.outputs.bump == 'true' && inputs.auto_bump == 'false') && 
-          inputs.deploy == 'true'
+          inputs.deploy_cratesio == 'true'
         run: git push origin --tags
           
       - name: Create GitHub Release
         id: create_release
         if: |
           (steps.version.outputs.bump == 'true' || inputs.auto_bump == 'true') && 
-          inputs.deploy == 'true'
+          inputs.deploy_cratesio == 'true'
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: |
@@ -369,7 +371,7 @@ jobs:
         id: checkout_check
         if: |
           (steps.version.outputs.bump == 'true' || inputs.auto_bump == 'true') && 
-          inputs.deploy == 'true'
+          inputs.deploy_cratesio == 'true'
         run: |
           if git ls-remote --tags --exit-code origin refs/tags/${{ steps.version.outputs.version }}
           then
@@ -382,7 +384,7 @@ jobs:
 
       - name: Checkout pushed tags
         if: |
-          inputs.deploy == 'true' &&
+          inputs.deploy_cratesio == 'true' &&
           steps.checkout_check.outputs.needs_checkout == 'true'
         uses: actions/checkout@v2.3.4
         with:
