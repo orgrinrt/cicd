@@ -221,7 +221,9 @@ jobs:
     if: |
       ((needs.setup.outputs.ci_skip == 'false' || needs.setup.outputs.ci_skip == false) &&
       (needs.setup.outputs.is_pr == 'false' || needs.setup.outputs.is_pr == false) &&
-      github.event_name == 'push') || (inputs.force_deploy == true || inputs.force_deploy == 'true')
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') && 
+      (inputs.deploy != false || inputs.deploy != 'false')) || 
+      (inputs.force_deploy == true || inputs.force_deploy == 'true')
     steps:
       - name: Init crate workflow
         uses: orgrinrt/cicd/.github/actions/init_crate_workflow@main
