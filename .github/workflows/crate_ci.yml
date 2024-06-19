@@ -45,6 +45,11 @@ on:
         required: false
         type: boolean
         default: false
+      auto_bump:
+        description: "Whether or not to automatically bump patch number (semantic versioning)"
+        required: false
+        type: boolean
+        default: false
 #    outputs:
 #      ci_skip: ${{ jobs.setup.outputs.ci_skip }}
 #      cargo_toml_modified: ${{ jobs.setup.outputs.cargo_toml_modified }}
@@ -113,9 +118,10 @@ jobs:
     needs: setup
     runs-on: ubuntu-latest
     if: |
-      (needs.setup.outputs.ci_skip == 'false' &&
-      (needs.setup.outputs.cargo_toml_modified == 'true' ||
-      needs.setup.outputs.src_modified == 'true')) || inputs.force_build == true
+      ((needs.setup.outputs.ci_skip == 'false' || needs.setup.outputs.ci_skip == false) &&
+      ((needs.setup.outputs.cargo_toml_modified == 'true' || needs.setup.outputs.cargo_toml_modified == true )||
+      (needs.setup.outputs.src_modified == 'true' || needs.setup.outputs.src_modified == true))) || 
+      (inputs.force_build == true || inputs.force_build == 'true')
     steps:
       - name: Init crate workflow
         uses: orgrinrt/cicd/.github/actions/init_crate_workflow@main
@@ -169,11 +175,13 @@ jobs:
   test:
     needs: [setup, build]
     runs-on: ubuntu-latest
+    
     if: |
-      (needs.setup.outputs.ci_skip == 'false' &&
-      (needs.setup.outputs.cargo_toml_modified == 'true' ||
-      needs.setup.outputs.src_modified == 'true' ||
-      needs.setup.outputs.tests_modified == 'true')) || inputs.force_tests == true
+      ((needs.setup.outputs.ci_skip == 'false' || needs.setup.outputs.ci_skip == false) &&
+      ((needs.setup.outputs.cargo_toml_modified == 'true' || needs.setup.outputs.cargo_toml_modified == true) ||
+      (needs.setup.outputs.src_modified == 'true' || needs.setup.outputs.src_modified == true) ||
+      (needs.setup.outputs.tests_modified == 'true' || needs.setup.outputs.tests_modified == true))) || 
+      (inputs.force_tests == true || inputs.force_tests == 'true')
     steps:
       - name: Init crate workflow
         uses: orgrinrt/cicd/.github/actions/init_crate_workflow@main
@@ -211,9 +219,9 @@ jobs:
     needs: [setup, build, test]
     runs-on: ubuntu-latest
     if: |
-      (needs.setup.outputs.ci_skip == 'false' &&
-      needs.setup.outputs.is_pr == 'false' &&
-      github.event_name == 'push') || inputs.force_deploy == true
+      ((needs.setup.outputs.ci_skip == 'false' || needs.setup.outputs.ci_skip == false) &&
+      (needs.setup.outputs.is_pr == 'false' || needs.setup.outputs.is_pr == false) &&
+      github.event_name == 'push') || (inputs.force_deploy == true || inputs.force_deploy == 'true')
     steps:
       - name: Init crate workflow
         uses: orgrinrt/cicd/.github/actions/init_crate_workflow@main
@@ -253,7 +261,7 @@ jobs:
           VERSION=$(awk -F' = ' '/^version/ {print $2}' Cargo.toml | tr -d '"')
           OLD_VERSION=$(git describe --abbrev=0 --tags | awk -F' = ' '/^version/ {print $2}' | tr -d '"' )
 
-          if [ "$VERSION" != "$OLD_VERSION" || ${{ inputs.auto_bump }} == 'true']
+          if [ "$VERSION" != "$OLD_VERSION" || ${{ inputs.auto_bump }} == 'true' ]
           then
             echo "::set-output name=bump::true"
           else
