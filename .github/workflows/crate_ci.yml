@@ -199,7 +199,10 @@ jobs:
           cargo test --all
           
       - name: Run tests, generate code coverage and save as artifact
-        if: github.ref == 'refs/heads/main'
+        if: |
+          github.ref == 'refs/heads/main' &&
+          ((inputs.deploy_cratesio == true || inputs.deploy_cratesio == 'true') || 
+           (inputs.force_deploy == true || inputs.force_deploy == 'true'))
         run: |
           set -e
           set -o pipefail
@@ -209,7 +212,10 @@ jobs:
 
       - name: Upload coverage to GitHub Artifacts
         uses: actions/upload-artifact@v2
-        if: github.ref == 'refs/heads/main'
+        if: |
+          github.ref == 'refs/heads/main' &&
+          ((inputs.deploy_cratesio == true || inputs.deploy_cratesio == 'true') || 
+           (inputs.force_deploy == true || inputs.force_deploy == 'true'))
         with:
           name: code-coverage-report
           path: target/debug/tarpaulin-report.xml
@@ -247,7 +253,6 @@ jobs:
             exit 1
           fi
           
-          
       - name: Install cargo-release
         run: cargo install cargo-release
 
@@ -259,6 +264,7 @@ jobs:
           git config --local user.email "action@github.com"
           
       - name: Setup cargo publish token
+        if: (inputs.deploy_cratesio == true || inputs.deploy_cratesio == 'true')
         run: |
           mkdir -p ~/.cargo
           echo "[registry]" > ~/.cargo/credentials
