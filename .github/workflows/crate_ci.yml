@@ -49,7 +49,7 @@ on:
         description: "Whether or not to automatically bump patch number (semantic versioning)"
         required: false
         type: boolean
-        default: false
+        default: true
 #    outputs:
 #      ci_skip: ${{ jobs.setup.outputs.ci_skip }}
 #      cargo_toml_modified: ${{ jobs.setup.outputs.cargo_toml_modified }}
