@@ -221,8 +221,7 @@ jobs:
     if: |
       ((needs.setup.outputs.ci_skip == 'false' || needs.setup.outputs.ci_skip == false) &&
       (needs.setup.outputs.is_pr == 'false' || needs.setup.outputs.is_pr == false) &&
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') && 
-      (inputs.deploy_cratesio != false || inputs.deploy_cratesio != 'false')) || 
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')) || 
       (inputs.force_deploy == true || inputs.force_deploy == 'true')
     steps:
       - name: Init crate workflow
@@ -238,6 +237,15 @@ jobs:
           set -e
           set -o pipefail
           cargo doc --no-deps
+          
+      - name: If no deploy methods enabled, just skip the job
+        run: |
+          if [[ ${{ inputs.deploy_cratesio }} == true || ${{ inputs.deploy_cratesio }} == 'true' ]]
+          then
+            echo "No deploy methods are enabled, skipping job..."
+            exit 0
+          fi
+          
           
       - name: Install cargo-release
         run: cargo install cargo-release
