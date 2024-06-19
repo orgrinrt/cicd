@@ -93,7 +93,7 @@ jobs:
             PR_SHA="${GITHUB_SHA}"
             IS_PR=false
           fi
-          MODIFIED_FILES=$(git diff-tree --no-commit-id --name-only @{1})
+          MODIFIED_FILES=$(git diff --name-only HEAD^ HEAD)
           echo "::set-output name=base_sha::${GITHUB_SHA}"
           echo "::set-output name=pr_sha::${PR_SHA}"
           echo "::set-output name=ci_skip::$(echo ${COMMIT_MSG} | grep -q '\[ci skip\]' && echo true || echo false)"
