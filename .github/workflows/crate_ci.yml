@@ -56,6 +56,11 @@ on:
         required: false
         type: string
         default: "release::(.*?)"
+      deploy_env_name:
+        description: "name of github environment to use"
+        required: false
+        type: string
+        default: "deploy"
 #    outputs:
 #      ci_skip: ${{ jobs.setup.outputs.ci_skip }}
 #      cargo_toml_modified: ${{ jobs.setup.outputs.cargo_toml_modified }}
@@ -248,6 +253,7 @@ jobs:
           
   deploy:
     needs: [setup, build, test]
+    environment: ${{ inputs.deploy_env_name }}
     runs-on: ubuntu-latest
     if: |
       (((needs.setup.outputs.ci_skip == 'false' || needs.setup.outputs.ci_skip == false) ||
