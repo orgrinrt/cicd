@@ -246,10 +246,10 @@ jobs:
     needs: [setup, build, test]
     runs-on: ubuntu-latest
     if: |
-      ((needs.setup.outputs.ci_skip == 'false' || needs.setup.outputs.ci_skip == false) &&
-      (needs.setup.outputs.is_pr == 'false' || needs.setup.outputs.is_pr == false) &&
-      (github.event_name == 'push' && github.ref == 'refs/heads/main') &&
-      (needs.setup.outputs.release == 'true' || needs.setup.outputs.release == true )) || 
+      (((needs.setup.outputs.ci_skip == 'false' || needs.setup.outputs.ci_skip == false) ||
+      (needs.setup.outputs.release == 'true' || needs.setup.outputs.release == true ) &&
+      (needs.setup.outputs.is_pr == 'false' || needs.setup.outputs.is_pr == false)) &&
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')) || 
       (inputs.force_deploy == true || inputs.force_deploy == 'true')
     steps:
       - name: Init crate workflow
