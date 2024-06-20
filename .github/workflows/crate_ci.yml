@@ -289,27 +289,10 @@ jobs:
           mkdir -p ~/.cargo
           echo "[registry]" > ~/.cargo/credentials
           echo "token = \"${{ secrets.CRATES_IO_TOKEN }}\"" >> ~/.cargo/credentials
-          
-      - name: Check for manual version change
-        id: version
-        run: |
-          set -e
-          set -o pipefail
-          VERSION=$(awk -F' = ' '/^version/ {print $2}' Cargo.toml | tr -d '"')
-          OLD_VERSION=$(git describe --abbrev=0 --tags | awk -F' = ' '/^version/ {print $2}' | tr -d '"' )
-
-          if [ "$VERSION" != "$OLD_VERSION" || ${{ inputs.auto_bump }} == 'true' ]
-          then
-            echo "::set-output name=bump::true"
-          else
-            echo "::set-output name=bump::false"
-          fi
-          
-          echo "::set-output name=version::$(grep '^version =' Cargo.toml | head -1 | awk '{print $3}' | sed 's/\"//g')"
+        
           
       - name: Automatic version bump and deploy
         if: |
-          (steps.version.outputs.bump == 'false' || steps.version.outputs.bump == false) &&
           (inputs.auto_bump == 'true' || inputs.auto_bump == true) &&
           (inputs.deploy_cratesio == 'true' || inputs.deploy_cratesio == true)
         run: |
@@ -319,7 +302,6 @@ jobs:
           
       - name: Automatic version bump but NO deploy
         if: |
-          (steps.version.outputs.bump == 'false' || steps.version.outputs.bump == false) &&
           (inputs.auto_bump == 'true' || inputs.auto_bump == true) &&
           (inputs.deploy_cratesio == 'false' || inputs.deploy_cratesio == false)
         run: |
@@ -328,125 +310,33 @@ jobs:
           cargo release patch --no-dev-version --no-confirm
           
       - name: Check for version after cargo-release
-        id: version_second
+        id: version
         run: |
           set -e
           set -o pipefail
-          echo "::set-output name=version_second::$(grep '^version =' Cargo.toml | head -1 | awk '{print $3}' | sed 's/\"//g')"
+          echo "::set-output name=version::$(grep '^version =' Cargo.toml | head -1 | awk '{print $3}' | sed 's/\"//g')"
           echo "::set-output name=tag::${git describe --tags --abbrev=0 $(git rev-list --tags --max-count=1)}"
           
-          
-#      - name: Can't auto-bump
-#        if: |
-#          steps.version.outputs.bump == 'false' &&
-#          inputs.auto_bump == 'true' &&
-#          inputs.deploy_cratesio == 'false'
-#        run: |
-#          set -e
-#          set -o pipefail
-#          echo "::warning::Auto-bump set to true, but no deploy_cratesio flag was set for this workflow run. Not 
-#          bumping 
-#          version."
-#          echo "::info::If you intended to deploy to crates.io, make sure to set the flag to true"
-#      
-#      - name: Deploy
-#        if: |
-#          steps.version.outputs.bump == 'true' && 
-#          inputs.auto_bump == 'false' &&
-#          inputs.deploy_cratesio == 'true'
-#        run: cargo publish --token ${CRATES_TOKEN}
-#        env:
-#          CRATES_TOKEN: ${{secrets.CRATES_IO_TOKEN}}
-          
-#      - name: Skip deploy
-#        if: |
-#          (steps.version.outputs.bump == 'false' || steps.version.outputs.bump == false) &&
-#          (inputs.auto_bump == 'false' || inputs.auto_bump == false) &&
-#          (inputs.deploy_cratesio == 'true' || inputs.deploy_cratesio == true)
-#        run: |
-#          set -e
-#          set -o pipefail
-#          echo "::warning::No version bump detected on Cargo.toml, so skipping deploy."
-#          echo "::info::If you intended to deploy, make sure to bump the version too."
-          
-#      - name: Commit and Tag Version Bump
-#        if: |
-#          ((steps.version.outputs.bump == 'true' || steps.version.outputs.bump == true) || 
-#          (inputs.auto_bump == 'true' || inputs.auto_bump == true))
-#        run: |
-#          set -e
-#          set -o pipefail
-#          git add .
-#          if [[ `git status --porcelain --untracked-files=no` ]]; then
-#            git commit -m "chore: version bump to ${{ steps.version.outputs.version }}"
-#          else
-#            echo "No changes to commit"
-#          fi
-#          git tag ${{ steps.version.outputs.version }}
-#          
-      - name: Commit and Tag if Auto Version Bump
-        if: |
-          ((steps.version.outputs.bump == 'true' || steps.version.outputs.bump == true) || 
-          (inputs.auto_bump == 'true' || inputs.auto_bump == true))
-        run: |
-          set -e
-          set -o pipefail
-          if [[ `git status --porcelain --untracked-files=no` ]]; then
-            git add .
-            git commit -m "chore: auto version bump to ${{ steps.version_second.outputs.version_second }} (${{ steps.version_second.outputs.tag }})"
-          else
-            echo "No changes to commit or already covered by `cargo-release`"
-          fi
-          
       - name: Push Tags
-        if: |
-          ((steps.version.outputs.bump == 'true' || steps.version.outputs.bump == true) || 
-          (inputs.auto_bump == 'true' || inputs.auto_bump == true))
         run: |
-          if git tag -l "${{ steps.version_second.outputs.tag }}"
+          if git tag -l "${{ steps.version.outputs.tag }}"
             then
               echo  "Tag already exists locally, not creating a new one (probably already covered by cargo-release"
             else
-              git tag -a ${{ steps.version_second.outputs.tag }} -m "${{ needs.setup.outputs.commit_msg }}"
+              git tag -a ${{ steps.version.outputs.tag }} -m "${{ needs.setup.outputs.commit_msg }}"
           fi
           
-          git push origin --tags "${{ steps.version_second.outputs.tag }}"
+          git push origin --tags "${{ steps.version.outputs.tag }}"
           
       - name: Create GitHub Release
         id: create_release
-        if: |
-          ((steps.version.outputs.bump == 'true' || steps.version.outputs.bump == true) || 
-          (inputs.auto_bump == 'true' || inputs.auto_bump == true))
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: |
             ${{ secrets.GH_RELEASE_TOKEN != null || secrets.GH_RELEASE_TOKEN != false && 
             secrets.GH_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.version_second.outputs.tag }}
-          release_name: Release ${{ steps.version_second.outputs.version_second }}
+          tag_name: ${{ steps.version.outputs.tag }}
+          release_name: Release ${{ steps.version.outputs.version }}
           draft: false
           prerelease: false
-          
-#      - name: Check if we need to checkout pushed tags
-#        id: checkout_check
-#        if: |
-#          (steps.version.outputs.bump == 'true' || inputs.auto_bump == 'true') && 
-#          inputs.deploy_cratesio == 'true'
-#        run: |
-#          if git ls-remote --tags --exit-code origin refs/tags/${{ steps.version_second.outputs.version_second }}
-#          then
-#            echo "Tag already exists on the remote"
-#            echo "::set-output name=needs_checkout::false"
-#          else
-#            echo "No tag in the remote, proceeding with checkout..."
-#            echo "::set-output name=needs_checkout::true"
-#          fi
-#
-#      - name: Checkout pushed tags
-#        if: |
-#          inputs.deploy_cratesio == 'true' &&
-#          steps.checkout_check.outputs.needs_checkout == 'true'
-#        uses: actions/checkout@v2.3.4
-#        with:
-#          ref: ${{ steps.version.outputs.version }}
