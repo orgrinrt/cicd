@@ -141,7 +141,8 @@ jobs:
       ((needs.setup.outputs.ci_skip == 'false' || needs.setup.outputs.ci_skip == false) &&
       ((needs.setup.outputs.cargo_toml_modified == 'true' || needs.setup.outputs.cargo_toml_modified == true )||
       (needs.setup.outputs.src_modified == 'true' || needs.setup.outputs.src_modified == true))) || 
-      (inputs.force_build == true || inputs.force_build == 'true')
+      (inputs.force_build == true || inputs.force_build == 'true') ||
+      (needs.setup.outputs.release == 'true' || needs.setup.outputs.release == true )
     steps:
       - name: Init crate workflow
         uses: orgrinrt/cicd/.github/actions/init_crate_workflow@main
@@ -201,7 +202,8 @@ jobs:
       ((needs.setup.outputs.cargo_toml_modified == 'true' || needs.setup.outputs.cargo_toml_modified == true) ||
       (needs.setup.outputs.src_modified == 'true' || needs.setup.outputs.src_modified == true) ||
       (needs.setup.outputs.tests_modified == 'true' || needs.setup.outputs.tests_modified == true))) || 
-      (inputs.force_tests == true || inputs.force_tests == 'true')
+      (inputs.force_tests == true || inputs.force_tests == 'true') ||
+      (needs.setup.outputs.release == 'true' || needs.setup.outputs.release == true )
     steps:
       - name: Init crate workflow
         uses: orgrinrt/cicd/.github/actions/init_crate_workflow@main
