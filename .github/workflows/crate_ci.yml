@@ -316,37 +316,23 @@ jobs:
         run: |
           set -e
           set -o pipefail
-          cargo release ${{ steps.extract-level.outputs.release-level }}  --no-confirm --push --execute || :
+          cargo release ${{ steps.extract-level.outputs.release-level }}  --no-confirm --push --execute
           
       - name: Automatic version bump but NO deploy
         if: |
           ((inputs.auto_bump == 'true' || inputs.auto_bump == true) &&
-          (inputs.deploy_cratesio == 'false' || inputs.deploy_cratesio == false)) ||
-          steps.extract-level.outputs.release-level != ''
+          (inputs.deploy_cratesio == 'false' || inputs.deploy_cratesio == false))
         run: |
           set -e
           set -o pipefail
-          cargo release ${{ steps.extract-level.outputs.release-level }}  --no-confirm --execute || :
+          cargo release ${{ steps.extract-level.outputs.release-level }}  --no-confirm --execute
           
-      - name: Check for version after cargo-release
-        id: version
+      - name: Fetch the latest tag
+        id: latesttag
         run: |
-          set -e
-          set -o pipefail
-          echo "::set-output name=version::$(grep '^version =' Cargo.toml | head -1 | awk '{print $3}' | sed 's/\"//g')"
-          echo "::set-output name=tag::${git describe --tags --abbrev=0 $(git rev-list --tags --max-count=1)}"
-          
-      - name: Push Tags
-        run: |
-          if git tag -l "${{ steps.version.outputs.tag }}"
-            then
-              echo  "Tag already exists locally, not creating a new one (probably already covered by cargo-release"
-            else
-              git tag -a ${{ steps.version.outputs.tag }} -m "${{ needs.setup.outputs.commit_msg }}"
-          fi
-          
-          git push origin --tags "${{ steps.version.outputs.tag }}"
-          
+          git fetch --tags
+          echo "::set-output name=tag::$(git describe --tags $(git rev-list --tags --max-count=1))"
+
       - name: Create GitHub Release
         id: create_release
         uses: actions/create-release@v1
@@ -355,7 +341,7 @@ jobs:
             ${{ secrets.GH_RELEASE_TOKEN != null || secrets.GH_RELEASE_TOKEN != false && 
             secrets.GH_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          release_name: Release ${{ steps.version.outputs.version }}
+          tag_name: ${{ steps.latesttag.outputs.tag }}
+          release_name: Release ${{ steps.latesttag.outputs.tag }}
           draft: false
           prerelease: false
