@@ -128,7 +128,8 @@ jobs:
         id: check_flags
         run: |
           message=$(git log --format=%B -n 1 ${{ github.event.after }})
-          if [[ $message =~ "${{ inputs.release_trigger_phrase }}" ]]; then 
+          echo $message | grep -qP "${{ inputs.release_trigger_phrase }}"
+          if [ $? -eq 0 ]; then
             echo "::set-output name=release::true"
           else
             echo "::set-output name=release::false"
