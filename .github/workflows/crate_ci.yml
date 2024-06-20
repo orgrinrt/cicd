@@ -310,7 +310,7 @@ jobs:
         run: |
           set -e
           set -o pipefail
-          cargo release ${{ steps.extract-level.outputs.release-level }}  --no-confirm --push
+          cargo release ${{ steps.extract-level.outputs.release-level }}  --no-confirm --push --execute
           
       - name: Automatic version bump but NO deploy
         if: |
@@ -320,7 +320,7 @@ jobs:
         run: |
           set -e
           set -o pipefail
-          cargo release ${{ steps.extract-level.outputs.release-level }}  --no-confirm
+          cargo release ${{ steps.extract-level.outputs.release-level }}  --no-confirm --execute
           
       - name: Check for version after cargo-release
         id: version
