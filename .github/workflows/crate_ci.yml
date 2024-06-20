@@ -298,7 +298,7 @@ jobs:
         run: |
           set -e
           set -o pipefail
-          cargo release patch --no-dev-version --no-confirm --push
+          cargo release patch --no-confirm --push
           
       - name: Automatic version bump but NO deploy
         if: |
@@ -307,7 +307,7 @@ jobs:
         run: |
           set -e
           set -o pipefail
-          cargo release patch --no-dev-version --no-confirm
+          cargo release patch --no-confirm
           
       - name: Check for version after cargo-release
         id: version
