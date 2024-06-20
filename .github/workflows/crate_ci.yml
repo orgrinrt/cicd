@@ -253,6 +253,11 @@ jobs:
       (needs.setup.outputs.is_pr == 'false' || needs.setup.outputs.is_pr == false)) &&
       (github.event_name == 'push' && github.ref == 'refs/heads/main')) || 
       (inputs.force_deploy == true || inputs.force_deploy == 'true')
+    outputs:
+      bump: ${{ steps.version.outputs.bump }}
+      version: ${{ steps.version.outputs.version }}
+      version_second: ${{ steps.version_second.outputs.version_second }}
+      tag: ${{ steps.version_second.outputs.tag }}
     steps:
       - name: Init crate workflow
         uses: orgrinrt/cicd/.github/actions/init_crate_workflow@main
