@@ -51,10 +51,11 @@ on:
         type: boolean
         default: true
       release_trigger_phrase:
-        description: "Start release commits with this phrase and the cicd will deploy/release"
+        description: "Phrase to trigger a release deployment (as a regexp where we match for the release level (e.g 
+        patch, beta, alpha, major, minor etc.)"
         required: false
         type: string
-        default: "release:"
+        default: "release::(.*?)"
 #    outputs:
 #      ci_skip: ${{ jobs.setup.outputs.ci_skip }}
 #      cargo_toml_modified: ${{ jobs.setup.outputs.cargo_toml_modified }}
@@ -289,25 +290,36 @@ jobs:
           mkdir -p ~/.cargo
           echo "[registry]" > ~/.cargo/credentials
           echo "token = \"${{ secrets.CRATES_IO_TOKEN }}\"" >> ~/.cargo/credentials
-        
+          
+      - name: Extract release level from commit message and deploy
+        id: extract-level
+        run: |
+          COMMIT_MSG=$(git log --format=%B -n 1)
+          if [[ $COMMIT_MSG =~ ${{ inputs.release_trigger_phrase }} ]]
+          then
+            LEVEL=${BASH_REMATCH[1]}
+            echo "::set-output name=release-level::$LEVEL"
+          fi
           
       - name: Automatic version bump and deploy
         if: |
-          (inputs.auto_bump == 'true' || inputs.auto_bump == true) &&
-          (inputs.deploy_cratesio == 'true' || inputs.deploy_cratesio == true)
+          ((inputs.auto_bump == 'true' || inputs.auto_bump == true) &&
+          (inputs.deploy_cratesio == 'true' || inputs.deploy_cratesio == true)) ||
+          steps.extract-level.outputs.release-level != ''
         run: |
           set -e
           set -o pipefail
-          cargo release patch --no-confirm --push
+          cargo release ${{ steps.extract-level.outputs.release-level }}  --no-confirm --push
           
       - name: Automatic version bump but NO deploy
         if: |
-          (inputs.auto_bump == 'true' || inputs.auto_bump == true) &&
-          (inputs.deploy_cratesio == 'false' || inputs.deploy_cratesio == false)
+          ((inputs.auto_bump == 'true' || inputs.auto_bump == true) &&
+          (inputs.deploy_cratesio == 'false' || inputs.deploy_cratesio == false)) ||
+          steps.extract-level.outputs.release-level != ''
         run: |
           set -e
           set -o pipefail
-          cargo release patch --no-confirm
+          cargo release ${{ steps.extract-level.outputs.release-level }}  --no-confirm
           
       - name: Check for version after cargo-release
         id: version
