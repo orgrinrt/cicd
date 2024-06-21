@@ -91,6 +91,7 @@ jobs:
       is_pr: ${{ steps.check_conditions.outputs.is_pr }}
       release: ${{ steps.check_flags.outputs.release }}
       commit_msg: ${{ steps.check_flags.outputs.commit_msg }}
+      release_level: ${{ steps.extract_level.outputs.release_level }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -141,6 +142,17 @@ jobs:
           fi
           echo "::set-output name=commit_msg::${message}"
           
+      - name: Extract release level from commit message and deploy
+        id: extract_level
+        run: |
+          COMMIT_MSG=${{ steps.check_flags.output.commit_msg }}
+          if [[ $COMMIT_MSG =~ ${{ inputs.release_trigger_phrase }} ]]
+          then
+            LEVEL=${BASH_REMATCH[1]}
+            echo "::set-output name=release_level::$LEVEL"
+          fi
+  
+  
   build:
     needs: setup
     runs-on: ubuntu-latest
@@ -256,17 +268,25 @@ jobs:
     environment: ${{ inputs.deploy_env_name }}
     runs-on: ubuntu-latest
     if: |
-      (((needs.setup.outputs.ci_skip == 'false' || needs.setup.outputs.ci_skip == false) ||
+      ((((needs.setup.outputs.ci_skip == 'false' || needs.setup.outputs.ci_skip == false) ||
       (needs.setup.outputs.release == 'true' || needs.setup.outputs.release == true ) &&
       (needs.setup.outputs.is_pr == 'false' || needs.setup.outputs.is_pr == false)) &&
       (github.event_name == 'push' && github.ref == 'refs/heads/main')) || 
-      (inputs.force_deploy == true || inputs.force_deploy == 'true')
+      (inputs.force_deploy == true || inputs.force_deploy == 'true')) &&
+      (needs.setup.outputs.release == 'true' || needs.setup.outputs.release == true )
     outputs:
       bump: ${{ steps.version.outputs.bump }}
       version: ${{ steps.version.outputs.version }}
       version_second: ${{ steps.version_second.outputs.version_second }}
       tag: ${{ steps.version_second.outputs.tag }}
     steps:
+      - name: Fail if release level is undefined
+        if: |
+          needs.setup.outputs.release_level == ''
+        run: |
+          echo "info::No release level defined"
+          exit 1
+      
       - name: Init crate workflow
         uses: orgrinrt/cicd/.github/actions/init_crate_workflow@main
         with:
@@ -290,7 +310,7 @@ jobs:
           set -o pipefail
           git config --local user.name "GitHub Action"
           git config --local user.email "action@github.com"
-          
+
       - name: Setup cargo publish token
         if: (inputs.deploy_cratesio == true || inputs.deploy_cratesio == 'true')
         run: |
@@ -298,40 +318,76 @@ jobs:
           echo "[registry]" > ~/.cargo/credentials
           echo "token = \"${{ secrets.CRATES_IO_TOKEN }}\"" >> ~/.cargo/credentials
           
-      - name: Extract release level from commit message and deploy
-        id: extract-level
-        run: |
-          COMMIT_MSG=$(git log --format=%B -n 1)
-          if [[ $COMMIT_MSG =~ ${{ inputs.release_trigger_phrase }} ]]
-          then
-            LEVEL=${BASH_REMATCH[1]}
-            echo "::set-output name=release-level::$LEVEL"
-          fi
-          
-      - name: Automatic version bump and deploy
-        if: |
-          ((inputs.auto_bump == 'true' || inputs.auto_bump == true) &&
-          (inputs.deploy_cratesio == 'true' || inputs.deploy_cratesio == true)) ||
-          steps.extract-level.outputs.release-level != ''
-        run: |
-          set -e
-          set -o pipefail
-          cargo release ${{ steps.extract-level.outputs.release-level }}  --no-confirm --push --execute
+#      - name: Automatic version bump and deploy
+#        if: |
+#          ((inputs.auto_bump == 'true' || inputs.auto_bump == true) &&
+#          (inputs.deploy_cratesio == 'true' || inputs.deploy_cratesio == true)) ||
+#          steps.extract-level.outputs.release-level != ''
+#        run: |
+#          set -e
+#          set -o pipefail
+#          cargo release ${{ steps.extract-level.outputs.release-level }}  --no-confirm --push --execute
           
       - name: Automatic version bump but NO deploy
-        if: |
-          ((inputs.auto_bump == 'true' || inputs.auto_bump == true) &&
-          (inputs.deploy_cratesio == 'false' || inputs.deploy_cratesio == false))
+#        if: |
+#          ((inputs.auto_bump == 'true' || inputs.auto_bump == true) &&
+#          (inputs.deploy_cratesio == 'false' || inputs.deploy_cratesio == false))
         run: |
           set -e
           set -o pipefail
-          cargo release ${{ steps.extract-level.outputs.release-level }}  --no-confirm --execute
+          cargo release ${{ needs.setup.outputs.release_level }}  --no-confirm --execute
           
       - name: Fetch the latest tag
-        id: latesttag
+        id: latest_tag
         run: |
           git fetch --tags
           echo "::set-output name=tag::$(git describe --tags $(git rev-list --tags --max-count=1))"
+          
+      - name: Update a version badge if one exists (assuming shields.io badge url format)
+        id: update_badge
+        run: |
+          # Get the latest tag.
+          # If your tag names have a prefix remove them with `sed`. In the below command assumptions are there is prefix like `v` or `release-` followed by version numbers.
+          LATEST_TAG=${{ steps.latest_tag.outputs.tag }}
+          
+          # If the tag starts with "v" followed by a number, remove the "v".
+          # Then, replace hyphens with underscores.
+          VERSION_IDENTIFIER=${LATEST_TAG#v}
+          VERSION_IDENTIFIER=${VERSION_IDENTIFIER//-/_}
+          
+          echo "Version Identifier for the badge is $VERSION_IDENTIFIER"
+            
+          # Double check whether the README.md file exists
+          if [ ! -f README.md ]; then
+            echo 'No README.md file found'
+            exit 1
+          fi
+          
+          # Update the version in the badge link in the README.md file.
+          # Match version-ANYTHING-color.svg, where ANYTHING doesn't include a hyphen.
+          sed -i.bak -E "s/(version-)[^-\]+(-color.svg)/\1$VERSION_IDENTIFIER\2/g" README.md
+            
+          # The above sed command creates a backup file `README.md.bak`. You may want to delete it if all is well.
+          rm README.md.bak
+
+          # Add changes to the stage
+          git add README.md
+          
+          # Commit the changes
+          git commit -m "Updated version badge to $VERSION_IDENTIFIER"
+          
+          # Push the change to the remote repository
+          git push
+          
+          # To make sure your local repository is up-to-date with the remote one, perform a git fetch
+          git fetch
+          
+      - name: Deploy to crates.io
+        if: |
+          ((inputs.deploy_cratesio == 'true' || inputs.deploy_cratesio == true))
+        run: |
+          # Publish the changes to crates.io
+          cargo publish
 
       - name: Create GitHub Release
         id: create_release
@@ -339,7 +395,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GH_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.latesttag.outputs.tag }}
-          release_name: Release ${{ steps.latesttag.outputs.tag }}
+          tag_name: ${{ steps.latest_tag.outputs.tag }}
+          release_name: Release ${{ steps.latest_tag.outputs.tag }}
           draft: false
           prerelease: false
