@@ -60,7 +60,7 @@ on:
         description: "name of github environment to use"
         required: false
         type: string
-        default: "deploy"
+        default: "production"
 #    outputs:
 #      ci_skip: ${{ jobs.setup.outputs.ci_skip }}
 #      cargo_toml_modified: ${{ jobs.setup.outputs.cargo_toml_modified }}
@@ -145,7 +145,8 @@ jobs:
       - name: Extract release level from commit message and deploy
         id: extract_level
         run: |
-          COMMIT_MSG=${{ steps.check_flags.output.commit_msg }}
+          #COMMIT_MSG=${{ steps.check_flags.output.commit_msg }}
+          COMMIT_MSG=$(git log --format=%B -n 1 ${{ github.event.after }})
           if [[ $COMMIT_MSG =~ ${{ inputs.release_trigger_phrase }} ]]
           then
             LEVEL=${BASH_REMATCH[1]}
@@ -280,12 +281,6 @@ jobs:
       version_second: ${{ steps.version_second.outputs.version_second }}
       tag: ${{ steps.version_second.outputs.tag }}
     steps:
-      - name: Fail if release level is undefined
-        if: |
-          needs.setup.outputs.release_level == ''
-        run: |
-          echo "info::No release level defined"
-          exit 1
       
       - name: Init crate workflow
         uses: orgrinrt/cicd/.github/actions/init_crate_workflow@main
@@ -294,6 +289,12 @@ jobs:
           toolchain: ${{ inputs.toolchain }}
           components: ${{ inputs.components }}
           override: ${{ inputs.override }}
+          
+      - name: Fail if release level is undefined
+        if: needs.setup.outputs.release_level == ''
+        run: |
+          echo "info::No release level defined"
+          exit 1
         
       - name: Documentation
         run: |
@@ -314,6 +315,8 @@ jobs:
       - name: Setup cargo publish token
         if: (inputs.deploy_cratesio == true || inputs.deploy_cratesio == 'true')
         run: |
+          set -e
+          set -o pipefail
           mkdir -p ~/.cargo
           echo "[registry]" > ~/.cargo/credentials
           echo "token = \"${{ secrets.CRATES_IO_TOKEN }}\"" >> ~/.cargo/credentials
@@ -340,12 +343,17 @@ jobs:
       - name: Fetch the latest tag
         id: latest_tag
         run: |
+          set -e
+          set -o pipefail
           git fetch --tags
           echo "::set-output name=tag::$(git describe --tags $(git rev-list --tags --max-count=1))"
           
       - name: Update a version badge if one exists (assuming shields.io badge url format)
         id: update_badge
         run: |
+          set -e
+          set -o pipefail
+          
           # Get the latest tag.
           # If your tag names have a prefix remove them with `sed`. In the below command assumptions are there is prefix like `v` or `release-` followed by version numbers.
           LATEST_TAG=${{ steps.latest_tag.outputs.tag }}
@@ -386,6 +394,8 @@ jobs:
         if: |
           ((inputs.deploy_cratesio == 'true' || inputs.deploy_cratesio == true))
         run: |
+          set -e
+          set -o pipefail
           # Publish the changes to crates.io
           cargo publish
 
