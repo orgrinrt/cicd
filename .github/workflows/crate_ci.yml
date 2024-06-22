@@ -373,7 +373,7 @@ jobs:
           
           # Update the version in the badge link in the README.md file.
           # Match version-ANYTHING-color.svg, where ANYTHING doesn't include a hyphen.
-          sed -i.bak -E "s/(version-)[^-\]+(-color.svg)/\1$VERSION_IDENTIFIER\2/g" README.md
+          sed -i.bak -E "s/(version-)[^-\]+(-.*\.svg)/\1$VERSION_IDENTIFIER\2/g" README.md
             
           # The above sed command creates a backup file `README.md.bak`. You may want to delete it if all is well.
           rm README.md.bak
