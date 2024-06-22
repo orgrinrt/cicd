@@ -136,8 +136,12 @@ jobs:
           COMMITS: ${{ toJson(github.event.commits) }}
         run: |
           message=$(echo "$COMMITS" | jq -r '.[-1].message')
-          echo "${message}" | grep -qP "${{ inputs.release_trigger_phrase }}" || false
-          if [ $? -eq 0 ]; then
+          if echo "${message}" | grep -qP "${{ inputs.release_trigger_phrase }}"; then
+            MATCH_FOUND=0
+          else
+            MATCH_FOUND=1
+          fi
+          if [ $MATCH_FOUND -eq 0 ]; then
             echo "::set-output name=release::true"
             echo "::info::Release set to TRUE"
           else
