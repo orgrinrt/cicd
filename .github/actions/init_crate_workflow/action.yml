@@ -29,7 +29,7 @@ runs:
     - name: Cache Cargo Directories
       uses: orgrinrt/cicd/.github/actions/cache_cargo@main
       with:
-        cache-key-prefix: ${{ inputs.key-prefix }}
+        cache-key-prefix: ${{ inputs.cache-key-prefix }}
 
     - name: Install Rust
       uses: orgrinrt/cicd/.github/actions/install_rust@main

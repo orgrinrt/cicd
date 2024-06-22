@@ -11,6 +11,10 @@ async function run() {
         let keyTemplate = core.getInput('key-template', {required: true});
         const cacheInvalidationPattern = core.getInput('cache-invalidation-pattern', {required: true});
 
+        console.log(`Caching these paths: ${cachePaths}`);
+        console.log(`Key Template: ${keyTemplate}`);
+        console.log(`Cache Invalidation Pattern: ${cacheInvalidationPattern}`);
+
         let pathsExist = false;
 
         for(const currentPath of cachePaths) {
@@ -32,6 +36,7 @@ async function run() {
         for (const file of triggerFiles) {
             hashObj.update(fs.readFileSync(file));
         }
+        console.log(`Trigger files that affect the cache: ${triggerFiles}`);
         const hash = '-' + hashObj.digest('hex');
 
         // Get all placeholders from the template
@@ -40,25 +45,28 @@ async function run() {
         for (let placeholder of placeholders) {
             const inputName = placeholder.slice(1, -1); // Remove braces
             let value = core.getInput(`key-${inputName}`);
-            if (!value & inputName === 'prefix') {
+            if (!value && inputName === 'prefix') {
                 const osType = require('os').platform();
                 value = `${osType}-`;
             }
             keyTemplate = keyTemplate.replace(new RegExp(placeholder, 'g'), value);
-        };
+        }
 
         for (const path of cachePaths) {
-            const key = keyTemplate
+            const restoreKey = keyTemplate
                 .replace('{path}', path.replace(/[^a-z0-9_]/gi, '_')) // Cleaned path
-                .replace('{hash}', hash);
+                .replace('{hash}', '');
 
-            const cacheKey = await cache.restoreCache([path], key);
+            console.log(`Restoring cache for path: ${path} with key: ${restoreKey}`);
+
+            const cacheKey = await cache.restoreCache([path], restoreKey, []);
 
             if (!cacheKey) {
-                const createdKey = await cache.saveCache([path], key);
-                console.log(`Cache created with key: ${createdKey}`);
+                const saveKey = restoreKey + '-' + hash;
+                const createdKey = await cache.saveCache([path], saveKey);
+                console.log(`Cache missed. New cache saved with key: ${createdKey}`);
             } else {
-                console.log(`Cache hit on key: ${cacheKey}`);
+                console.log(`Cache hit for key: ${cacheKey}`);
             }
         }
     } catch (error) {

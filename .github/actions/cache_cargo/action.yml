@@ -13,7 +13,7 @@ inputs:
     description: 'Glob pattern for files that trigger cache invalidation'
     required: true
     default: '**/Cargo.lock'
-  key-prefix:
+  cache-key-prefix:
     description: 'Optional key prefix for cache key'
     required: false
 runs:
