@@ -263,6 +263,15 @@ jobs:
           name: code-coverage-report
           path: target/debug/tarpaulin-report.xml
           
+      - name: Update cache
+        uses: orgrinrt/cicd/.github/actions/init_crate_workflow@main
+        with:
+          profile: ${{ inputs.profile }}
+          toolchain: ${{ inputs.toolchain }}
+          components: ${{ inputs.components }}
+          override: ${{ inputs.override }}
+          only_cache: true
+          
           
   deploy:
     needs: [setup, build, test]
@@ -304,6 +313,15 @@ jobs:
           
       - name: Install cargo-release
         run: cargo install cargo-release
+        
+      - name: Update cache
+        uses: orgrinrt/cicd/.github/actions/init_crate_workflow@main
+        with:
+          profile: ${{ inputs.profile }}
+          toolchain: ${{ inputs.toolchain }}
+          components: ${{ inputs.components }}
+          override: ${{ inputs.override }}
+          only_cache: true
 
       - name: Configure git user
         run: |

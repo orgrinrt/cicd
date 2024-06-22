@@ -19,11 +19,16 @@ inputs:
     description: '(Optional) Prefix for caching key'
     required: false
     default: '${{ runner.os }}-'
+  only_cache:
+    description: 'Only do the caching pass, not the installation'
+    required: false
+    default: "false"
 
 runs:
   using: 'composite'
   steps:
     - name: Checkout code
+      if: inputs.only_cache != true || inputs.only_cache != 'true'
       uses: actions/checkout@v2
 
     - name: Cache Cargo Directories
@@ -32,6 +37,7 @@ runs:
         cache-key-prefix: ${{ inputs.cache-key-prefix }}
 
     - name: Install Rust
+      if: inputs.only_cache != true || inputs.only_cache != 'true'
       uses: orgrinrt/cicd/.github/actions/install_rust@main
       with:
         profile: ${{ inputs.profile }}
