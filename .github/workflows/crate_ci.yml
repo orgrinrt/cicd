@@ -139,8 +139,10 @@ jobs:
           echo "${message}" | grep -qP "${{ inputs.release_trigger_phrase }}" || :
           if [ $? -eq 0 ]; then
             echo "::set-output name=release::true"
+            echo "::info::Release set to TRUE"
           else
             echo "::set-output name=release::false"
+            echo "::info::Release set to FALSE"
           fi
           echo "::set-output name=commit_msg::${message}"
 
