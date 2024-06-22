@@ -338,7 +338,7 @@ jobs:
         run: |
           set -e
           set -o pipefail
-          cargo release ${{ needs.setup.outputs.release_level }}  --no-confirm --execute
+          cargo release ${{ needs.setup.outputs.release_level }} --no-publish --no-confirm --execute 
           
       - name: Fetch the latest tag
         id: latest_tag
