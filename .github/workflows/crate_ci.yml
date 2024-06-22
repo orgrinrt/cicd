@@ -133,26 +133,30 @@ jobs:
       - name: Check explicit flags
         id: check_flags
         run: |
-          message=$(git log --format=%B -n 1 ${{ github.event.after }})
-          echo $message | grep -qP "${{ inputs.release_trigger_phrase }}" || :
+          if ! command -v jq &> /dev/null
+          then
+            sudo apt-get update
+            sudo apt-get install -y jq
+          fi
+          message=$(echo '${{ github.event.commits }}' | jq -r '.[-1].message')
+          echo "${message}" | grep -qP "${{ inputs.release_trigger_phrase }}" || :
           if [ $? -eq 0 ]; then
             echo "::set-output name=release::true"
           else
             echo "::set-output name=release::false"
           fi
           echo "::set-output name=commit_msg::${message}"
-          
+      
       - name: Extract release level from commit message and deploy
         id: extract_level
         run: |
-          #COMMIT_MSG=${{ steps.check_flags.output.commit_msg }}
-          COMMIT_MSG=$(git log --format=%B -n 1 ${{ github.event.after }})
-          if [[ $COMMIT_MSG =~ ${{ inputs.release_trigger_phrase }} ]]
+          COMMIT_MSG=${{ steps.check_flags.outputs.commit_msg }}
+          if [[ "${COMMIT_MSG}" == *"${{ inputs.release_trigger_phrase }}"* ]]
           then
             LEVEL=${BASH_REMATCH[1]}
             echo "::set-output name=release_level::$LEVEL"
           fi
-  
+        
   
   build:
     needs: setup
