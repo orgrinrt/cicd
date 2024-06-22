@@ -132,13 +132,10 @@ jobs:
           
       - name: Check explicit flags
         id: check_flags
+        env:
+          COMMITS: ${{ toJson(github.event.commits) }}
         run: |
-          if ! command -v jq &> /dev/null
-          then
-            sudo apt-get update
-            sudo apt-get install -y jq
-          fi
-          message=$(echo '${{ github.event.commits }}' | jq -r '.[-1].message')
+          message=$(echo "$COMMITS" | jq -r '.[-1].message')
           echo "${message}" | grep -qP "${{ inputs.release_trigger_phrase }}" || :
           if [ $? -eq 0 ]; then
             echo "::set-output name=release::true"
