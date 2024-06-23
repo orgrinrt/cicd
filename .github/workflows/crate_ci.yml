@@ -61,6 +61,11 @@ on:
         required: false
         type: string
         default: "production"
+      test_feature_sets:
+        description: "a list of feature flags to test in combination along with the default test, separated by comma"
+        required: false
+        type: string
+        default: ''
 #    outputs:
 #      ci_skip: ${{ jobs.setup.outputs.ci_skip }}
 #      cargo_toml_modified: ${{ jobs.setup.outputs.cargo_toml_modified }}
@@ -241,17 +246,31 @@ jobs:
           override: ${{ inputs.override }}
 
       - name: Run tests
-        if: ((inputs.deploy_cratesio != true || inputs.deploy_cratesio != 'true') &&
-          (inputs.force_deploy != true || inputs.force_deploy != 'true'))
+        if: | 
+          ((needs.setup.outputs.release == false || needs.setup.outputs.release == 'false') &&
+          (inputs.force_deploy == false || inputs.force_deploy == 'false'))
         run: |
           set -e
           set -o pipefail
           cargo test --lib --all
           
+      - name: Run specific tests with feature flags
+        if: |
+          inputs.test_feature_sets != '' && 
+          ((needs.setup.outputs.release == false || needs.setup.outputs.release == 'false') &&
+          (inputs.force_deploy == false || inputs.force_deploy == 'false'))
+        run: |
+          IFS=', ' read -r -a feature_array <<< "${{ inputs.test_feature_sets }}"
+          for feature_set in "${feature_array[@]}"
+          do
+            echo "Running tests with features: $feature_set"
+            cargo test --features "$feature_set"
+          done
+          
       - name: Run tests, generate code coverage and save as artifact
         if: |
           github.ref == 'refs/heads/main' &&
-          ((inputs.deploy_cratesio == true || inputs.deploy_cratesio == 'true') || 
+          ((needs.setup.outputs.release == true || needs.setup.outputs.release == 'true') || 
            (inputs.force_deploy == true || inputs.force_deploy == 'true'))
         run: |
           set -e
@@ -264,7 +283,7 @@ jobs:
         uses: actions/upload-artifact@v2
         if: |
           github.ref == 'refs/heads/main' &&
-          ((inputs.deploy_cratesio == true || inputs.deploy_cratesio == 'true') || 
+          ((needs.setup.outputs.release == true || needs.setup.outputs.release == 'true') || 
            (inputs.force_deploy == true || inputs.force_deploy == 'true'))
         with:
           name: code-coverage-report
