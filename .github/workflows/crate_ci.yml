@@ -55,7 +55,7 @@ on:
         patch, beta, alpha, major, minor etc.)"
         required: false
         type: string
-        default: "release::(\S*)"
+        default: "release::(\\S*)"
       deploy_env_name:
         description: "name of github environment to use"
         required: false
