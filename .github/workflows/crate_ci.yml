@@ -162,10 +162,10 @@ jobs:
           LEVEL=$(echo "$COMMIT_MSG" | perl -nle 'print $1 if /${{ inputs.release_trigger_phrase }}/')
           if [[ $LEVEL ]]
           then
-            echo "::info::Setting the output 'release_level' to value: $LEVEL (${BASH_REMATCH[1]})"
-            echo "::info:: >> this comes from the commit message:"
-            echo "::info:: << ${{ steps.check_flags.outputs.commit_msg }}"
-            echo "::info:: >> matching this regex: ${{ inputs.release_trigger_phrase }}"
+            echo "::info::Setting the output 'release_level' to value: $LEVEL"
+            echo "::info:: >> this comes from the commit message..."
+            echo "::info::       ${{ steps.check_flags.outputs.commit_msg }}"
+            echo "::info:: >> ...matching this regex: ${{ inputs.release_trigger_phrase }}"
             echo "::set-output name=release_level::$LEVEL"
           fi
   
