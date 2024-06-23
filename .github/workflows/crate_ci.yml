@@ -159,7 +159,7 @@ jobs:
         id: extract_level
         run: |
           COMMIT_MSG="${{ steps.check_flags.outputs.commit_msg }}"
-          if [[ "${COMMIT_MSG}" =~ "release::(.*?)" ]]
+          if [[ "${COMMIT_MSG}" =~ ${{ inputs.release_trigger_phrase }} ]]
           then
             LEVEL=${BASH_REMATCH[1]}
             echo "::set-output name=release_level::$LEVEL"
