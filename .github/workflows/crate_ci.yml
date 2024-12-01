@@ -268,7 +268,7 @@ jobs:
           for feature_set in "${feature_array[@]}"
           do
             echo "Running tests with features: $feature_set"
-            cargo test --features --no-default-features "$feature_set"
+            cargo test --no-default-features --features "$feature_set"
           done
 
       - name: Run tests, generate code coverage and save as artifact
