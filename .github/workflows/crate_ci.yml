@@ -106,7 +106,7 @@ jobs:
       - name: Check conditions and set outputs
         id: check_conditions
         run: |
-          COMMIT_MSG="${{ github.event.head_commit.message }}"
+          COMMIT_MSG=$(echo "${{ github.event.head_commit.message }}" | tr ` \`)
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             PR_SHA="${{ github.event.pull_request.head.sha }}"
             IS_PR=true
@@ -153,7 +153,7 @@ jobs:
             echo "::set-output name=release::false"
             echo "::info::Release set to FALSE"
           fi
-          echo "::set-output name=commit_msg::${message}"
+          echo $(echo "::set-output name=commit_msg::${message}" | tr ` \`)
 
       - name: Extract release level from commit message and deploy
         id: extract_level
