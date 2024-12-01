@@ -10,12 +10,16 @@
     "type": "git",
     "url": "git_url_here"
   },
-  "keywords": ["github", "actions", "cache"],
+  "keywords": [
+    "github",
+    "actions",
+    "cache"
+  ],
   "author": "orgrinrt",
   "license": "MIT",
   "dependencies": {
-    "@actions/core": "^1.6.0",
-    "@actions/cache": "^3.0.0",
-    "@actions/glob": "^0.2.0"
+    "@actions/core": "^1.11.1",
+    "@actions/cache": "^3.3.0",
+    "@actions/glob": "^0.5.0"
   }
 }
