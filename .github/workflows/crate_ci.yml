@@ -66,6 +66,11 @@ on:
         required: false
         type: string
         default: ''
+      use_tarpaulin:
+        description: "Should tarpaulin be used for code coverage (not really implemented yet)"
+        required: false
+        type: boolean
+        default: false
     #    outputs:
     #      ci_skip: ${{ jobs.setup.outputs.ci_skip }}
     #      cargo_toml_modified: ${{ jobs.setup.outputs.cargo_toml_modified }}
@@ -252,7 +257,8 @@ jobs:
       - name: Run tests
         if: |
           ((needs.setup.outputs.release == false || needs.setup.outputs.release == 'false') &&
-          (inputs.force_deploy == false || inputs.force_deploy == 'false'))
+          (inputs.force_deploy == false || inputs.force_deploy == 'false')) ||
+          (inputs.use_tarpaulin == false || inputs.use_tarpaulin == 'false')
         run: |
           set -e
           set -o pipefail
@@ -275,7 +281,8 @@ jobs:
         if: |
           github.ref == 'refs/heads/main' &&
           ((needs.setup.outputs.release == true || needs.setup.outputs.release == 'true') || 
-           (inputs.force_deploy == true || inputs.force_deploy == 'true'))
+           (inputs.force_deploy == true || inputs.force_deploy == 'true')) &&
+          (inputs.use_tarpaulin == true || inputs.use_tarpaulin == 'true')
         run: |
           set -e
           set -o pipefail
@@ -288,7 +295,8 @@ jobs:
         if: |
           github.ref == 'refs/heads/main' &&
           ((needs.setup.outputs.release == true || needs.setup.outputs.release == 'true') || 
-           (inputs.force_deploy == true || inputs.force_deploy == 'true'))
+           (inputs.force_deploy == true || inputs.force_deploy == 'true')) &&
+          (inputs.use_tarpaulin == true || inputs.use_tarpaulin == 'true')
         with:
           name: code-coverage-report
           path: target/debug/tarpaulin-report.xml
