@@ -164,11 +164,28 @@ jobs:
       - name: Install cargo-msrv
         run: cargo install cargo-msrv
 
+      - name: Check for existing MSRV in Cargo.toml
+        id: check_msrv
+        run: |
+          if grep -qE '^\s*rust-version\s*=' Cargo.toml || \
+             grep -qE '^\s*package\.rust-version\s*=' Cargo.toml || \
+             (grep -qE '^\[workspace\.package\]' Cargo.toml && grep -qE '^\s*rust-version\s*=' Cargo.toml); then
+            echo "msrv_exists=true" >> $GITHUB_OUTPUT
+            CURRENT_MSRV=$(grep -oP 'rust-version\s*=\s*"\K[0-9]+\.[0-9]+\.[0-9]+(?=")' Cargo.toml || \
+                           grep -oP 'package\.rust-version\s*=\s*"\K[0-9]+\.[0-9]+\.[0-9]+(?=")' Cargo.toml)
+            echo "MSRV=$CURRENT_MSRV" >> $GITHUB_ENV
+            echo "Current MSRV: $CURRENT_MSRV"
+          else
+            echo "msrv_exists=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Find and update MSRV
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        if: |
+          (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && 
+          steps.check_msrv.outputs.msrv_exists == 'false'
         id: find_msrv
         run: |
-          MSRV=$(cargo msrv find --output-format json | jq -r '.msrv')
+          MSRV=$(cargo msrv find --output-format json | jq -r '.result.version')
           echo "Detected MSRV: $MSRV"
           echo "MSRV=$MSRV" >> $GITHUB_ENV
           cargo msrv verify --rust-version $MSRV
@@ -203,12 +220,9 @@ jobs:
           git commit -m "Update MSRV to $MSRV" || echo "No changes to commit"
           git push
 
-      - name: Verify current MSRV
-        if: github.event_name == 'pull_request'
+      - name: Verify MSRV
         run: |
-          CURRENT_MSRV=$(grep -oP 'package\.rust-version\s*=\s*"\K[0-9]+\.[0-9]+\.[0-9]+(?=")' Cargo.toml)
-          echo "Current MSRV: $CURRENT_MSRV"
-          cargo msrv verify --rust-version $CURRENT_MSRV
+          cargo msrv verify --rust-version $MSRV
 
       - name: Update cache
         uses: orgrinrt/cicd/.github/actions/init_crate_workflow@main
@@ -396,6 +410,7 @@ jobs:
           components: ${{ inputs.components }}
           override: ${{ inputs.override }}
           only_cache: true
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure git user
         run: |
@@ -468,13 +483,3 @@ jobs:
           release_name: Release ${{ steps.latest_tag.outputs.tag }}
           draft: false
           prerelease: false
-
-      - name: Update cache
-        uses: orgrinrt/cicd/.github/actions/init_crate_workflow@main
-        with:
-          profile: ${{ inputs.profile }}
-          toolchain: ${{ inputs.toolchain }}
-          components: ${{ inputs.components }}
-          override: ${{ inputs.override }}
-          only_cache: true
-          token: ${{ secrets.GITHUB_TOKEN }}
