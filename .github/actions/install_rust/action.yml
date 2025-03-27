@@ -17,6 +17,7 @@ inputs:
     description: 'Whether to override the default toolchain (true or false)'
     required: false
     default: 'false'
+    
 runs:
   using: 'composite'
   steps:

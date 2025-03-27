@@ -4,12 +4,12 @@ on:
   workflow_call:
     inputs:
       profile:
-        description: 'Profile to use \(minimal \/ default\)'
+        description: 'Profile to use (minimal / default)'
         required: true
         default: 'minimal'
         type: string
       toolchain:
-        description: 'Toolchain to install \(stable \/ beta \/ nightly \/ <specific version>\)'
+        description: 'Toolchain to install (stable / beta / nightly / <specific version>)'
         required: true
         default: 'stable'
         type: string
@@ -22,51 +22,51 @@ on:
         required: false
         type: boolean
       deploy_cratesio:
-        description: "Do we deploy to cargo"
+        description: 'Do we deploy to cargo'
         required: false
         default: true
         type: boolean
       tests_path:
-        description: "The path to the directory where the tests exists \(if not \/src\)"
+        description: 'The path to the directory where the tests exists (if not /src)'
         required: false
         type: string
       force_build:
-        description: "Whether or not to run build job despite having no changes to source or Cargo\.toml"
+        description: 'Whether or not to run build job despite having no changes to source or Cargo.toml'
         required: false
         type: boolean
         default: false
       force_tests:
-        description: "Whether or not to run test job despite having no changes to source\/tests or Cargo\.toml"
+        description: 'Whether or not to run test job despite having no changes to source/tests or Cargo.toml'
         required: false
         type: boolean
         default: false
       force_deploy:
-        description: "Whether or not to force deploy job"
+        description: 'Whether or not to force deploy job'
         required: false
         type: boolean
         default: false
       auto_bump:
-        description: "Whether or not to automatically bump patch number \(semantic versioning\)"
+        description: 'Whether or not to automatically bump patch number (semantic versioning)'
         required: false
         type: boolean
         default: true
       release_trigger_phrase:
-        description: "Phrase to trigger a release deployment \(as a regexp where we match for the release level \(e\.g\. patch, beta, alpha, major, minor etc\.\)"
+        description: 'Phrase to trigger a release deployment (as a regexp where we match for the release level (e.g. patch, beta, alpha, major, minor etc.))'
         required: false
         type: string
-        default: "release::(\\S*)"
+        default: 'release::(\S*)'
       deploy_env_name:
-        description: "name of github environment to use"
+        description: 'name of github environment to use'
         required: false
         type: string
-        default: "production"
+        default: 'production'
       test_feature_sets:
-        description: "a list of feature flags to test in combination along with the default test, separated by comma"
+        description: 'a list of feature flags to test in combination along with the default test, separated by comma'
         required: false
         type: string
         default: ''
       use_tarpaulin:
-        description: "Should tarpaulin be used for code coverage \(not really implemented yet\)"
+        description: 'Should tarpaulin be used for code coverage (not really implemented yet)'
         required: false
         type: boolean
         default: false
