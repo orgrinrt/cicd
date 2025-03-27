@@ -168,7 +168,7 @@ jobs:
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         id: find_msrv
         run: |
-          MSRV=$(cargo msrv --output-format json | jq -r '.msrv')
+          MSRV=$(cargo msrv find --output-format json | jq -r '.msrv')
           echo "Detected MSRV: $MSRV"
           echo "MSRV=$MSRV" >> $GITHUB_ENV
           cargo msrv verify --rust-version $MSRV
