@@ -23,6 +23,10 @@ inputs:
     description: 'Only do the caching pass, not the installation'
     required: false
     default: "false"
+  token:
+    description: 'GitHub token to use for checking out the repository'
+    required: false
+    default: '${{ secrets.GITHUB_TOKEN }}'
 
 runs:
   using: 'composite'
@@ -32,7 +36,7 @@ runs:
       uses: actions/checkout@v3
       with:
         fetch-depth: 0
-        token: ${{ secrets.GH_RELEASE_TOKEN }}
+        token: ${{ inputs.token }}
 
     - name: Cache Cargo Directories
       uses: Swatinem/rust-cache@v2
