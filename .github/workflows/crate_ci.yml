@@ -335,7 +335,7 @@ jobs:
           ((needs.setup.outputs.release == true || needs.setup.outputs.release == 'true') ||
           (inputs.force_deploy == true || inputs.force_deploy == 'true')) &&
           (inputs.use_tarpaulin == true || inputs.use_tarpaulin == 'true')
-        uses: actions-rs/tarpaulin@v1
+        uses: actions-rs/tarpaulin@v0.1.3
         with:
           args: --out Xml
         id: coverage
