@@ -159,6 +159,7 @@ jobs:
           toolchain: ${{ inputs.toolchain }}
           components: ${{ inputs.components }}
           override: ${{ inputs.override }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Install cargo-msrv
         run: cargo install cargo-msrv
@@ -226,6 +227,7 @@ jobs:
           toolchain: ${{ inputs.toolchain }}
           components: ${{ inputs.components }}
           override: ${{ inputs.override }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Formatting
         run: |
@@ -269,6 +271,7 @@ jobs:
           toolchain: ${{ inputs.toolchain }}
           components: ${{ inputs.components }}
           override: ${{ inputs.override }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Run tests
         if: |
@@ -347,6 +350,7 @@ jobs:
           toolchain: ${{ inputs.toolchain }}
           components: ${{ inputs.components }}
           override: ${{ inputs.override }}
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Fail if release level is undefined
         if: needs.setup.outputs.release_level == ''
