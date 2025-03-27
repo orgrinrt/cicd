@@ -40,7 +40,7 @@ runs:
     - name: Cache Cargo Directories
       uses: Swatinem/rust-cache@v2
       with:
-        key-prefix: ${{ inputs.cache-key-prefix }}
+        prefix-key: ${{ inputs.cache-key-prefix }}
 
     - name: Install Rust
       if: inputs.only_cache != true || inputs.only_cache != 'true'
