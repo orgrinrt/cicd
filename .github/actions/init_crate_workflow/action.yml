@@ -30,6 +30,9 @@ runs:
     - name: Checkout code
       if: inputs.only_cache != true || inputs.only_cache != 'true'
       uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+        token: ${{ secrets.GH_RELEASE_TOKEN }}
 
     - name: Cache Cargo Directories
       uses: Swatinem/rust-cache@v2

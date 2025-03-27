@@ -95,6 +95,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 0
+          token: ${{ secrets.GH_RELEASE_TOKEN }}
 
       - name: Check conditions and set outputs
         id: check_conditions
@@ -151,26 +152,13 @@ jobs:
     needs: setup
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Init crate workflow
+        uses: orgrinrt/cicd/.github/actions/init_crate_workflow@main
         with:
-          fetch-depth: 0
-          token: ${{ secrets.GH_RELEASE_TOKEN }}
-
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
+          profile: ${{ inputs.profile }}
           toolchain: ${{ inputs.toolchain }}
-
-      - name: Cache dependencies
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
+          components: ${{ inputs.components }}
+          override: ${{ inputs.override }}
 
       - name: Install cargo-msrv
         run: cargo install cargo-msrv
