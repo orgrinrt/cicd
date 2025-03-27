@@ -1,16 +1,16 @@
 name: Init repo for a cargo crate workflow
-description: 'Initialize the workflow for a cargo crate (i.e checkout repo, cache cargo, install rust)'
+description: 'Initialize the workflow for a cargo crate (i.e.\ checkout repo, cache cargo, install rust)'
 inputs:
   profile:
-    description: 'Profile to use (minimal / default)'
+    description: 'Profile to use (minimal \/ default)'
     required: true
     default: 'minimal'
   toolchain:
-    description: 'Toolchain to install (stable / beta / nightly / <specific version>)'
+    description: 'Toolchain to install (stable \/ beta \/ nightly \/ <specific version>)'
     required: true
     default: 'stable'
   components:
-    description: '(Optional) Toolchain components to install (e.g rustfmt, clippy)'
+    description: '(Optional) Toolchain components to install (e.g., rustfmt, clippy)'
     required: false
   override:
     description: '(Optionally) Whether or not to override the default toolchain'
@@ -29,12 +29,12 @@ runs:
   steps:
     - name: Checkout code
       if: inputs.only_cache != true || inputs.only_cache != 'true'
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
     - name: Cache Cargo Directories
-      uses: orgrinrt/cicd/.github/actions/cache_cargo@main
+      uses: Swatinem/rust-cache@v2
       with:
-        cache-key-prefix: ${{ inputs.cache-key-prefix }}
+        key-prefix: ${{ inputs.cache-key-prefix }}
 
     - name: Install Rust
       if: inputs.only_cache != true || inputs.only_cache != 'true'

@@ -2,24 +2,25 @@ name: Install Rust
 description: 'Install the Rust toolchain'
 inputs:
   profile:
-    description: 'Profile to use (minimal / default)'
+    description: 'Profile to use (minimal \/ default)'
     required: true
     default: 'minimal'
   toolchain:
-    description: 'Toolchain to install (stable / beta / nightly / <specific version>)'
+    description: 'Toolchain to install (stable \/ beta \/ nightly \/ <specific version>)'
     required: true
     default: 'stable'
   components:
-    description: 'Components to install with the toolchain'
+    description: 'Comma‑separated list of components to install (e.g., rustfmt, clippy)'
     required: false
+    default: ''
   override:
-    description: 'Whether or not to override the default toolchain'
+    description: 'Whether to override the default toolchain (true or false)'
     required: false
-
+    default: 'false'
 runs:
   using: 'composite'
   steps:
-    - name: Install Rust
+    - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
       with:
         profile: ${{ inputs.profile }}

@@ -4,12 +4,12 @@ on:
   workflow_call:
     inputs:
       profile:
-        description: 'Profile to use (minimal / default)'
+        description: 'Profile to use \(minimal \/ default\)'
         required: true
         default: 'minimal'
         type: string
       toolchain:
-        description: 'Toolchain to install (stable / beta / nightly / <specific version>)'
+        description: 'Toolchain to install \(stable \/ beta \/ nightly \/ <specific version>\)'
         required: true
         default: 'stable'
         type: string
@@ -27,16 +27,16 @@ on:
         default: true
         type: boolean
       tests_path:
-        description: "The path to the directory where the tests exists (if not /src)"
+        description: "The path to the directory where the tests exists \(if not \/src\)"
         required: false
         type: string
       force_build:
-        description: "Whether or not to run build job despite having no changes to source or cargo.toml"
+        description: "Whether or not to run build job despite having no changes to source or Cargo\.toml"
         required: false
         type: boolean
         default: false
       force_tests:
-        description: "Whether or not to run test job despite having no changes to source/tests or cargo.toml"
+        description: "Whether or not to run test job despite having no changes to source\/tests or Cargo\.toml"
         required: false
         type: boolean
         default: false
@@ -46,13 +46,12 @@ on:
         type: boolean
         default: false
       auto_bump:
-        description: "Whether or not to automatically bump patch number (semantic versioning)"
+        description: "Whether or not to automatically bump patch number \(semantic versioning\)"
         required: false
         type: boolean
         default: true
       release_trigger_phrase:
-        description: "Phrase to trigger a release deployment (as a regexp where we match for the release level (e.g 
-        patch, beta, alpha, major, minor etc.)"
+        description: "Phrase to trigger a release deployment \(as a regexp where we match for the release level \(e\.g\. patch, beta, alpha, major, minor etc\.\)"
         required: false
         type: string
         default: "release::(\\S*)"
@@ -67,26 +66,15 @@ on:
         type: string
         default: ''
       use_tarpaulin:
-        description: "Should tarpaulin be used for code coverage (not really implemented yet)"
+        description: "Should tarpaulin be used for code coverage \(not really implemented yet\)"
         required: false
         type: boolean
         default: false
-    #    outputs:
-    #      ci_skip: ${{ jobs.setup.outputs.ci_skip }}
-    #      cargo_toml_modified: ${{ jobs.setup.outputs.cargo_toml_modified }}
-    #      src_modified: ${{ jobs.setup.outputs.src_modified }}
-    #      tests_modified: ${{ jobs.setup.outputs.tests_modified }}
-    #      pr_sha: ${{ jobs.setup.outputs.pr_sha }}
-    #      base_sha: ${{ jobs.setup.outputs.base_sha }}
-    #      version: ${{ jobs.deploy.outputs.version }}
-    #      version_bumped: ${{ jobs.deploy.outputs.version_bumped }}
-    #      is_pr: ${{ jobs.setup.outputs.is_pr }}
     secrets:
       CRATES_IO_TOKEN:
         required: true
       GH_RELEASE_TOKEN:
         required: true
-
 
 jobs:
   setup:
@@ -104,14 +92,14 @@ jobs:
       release_level: ${{ steps.extract_level.outputs.release_level }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           fetch-depth: 0
 
       - name: Check conditions and set outputs
         id: check_conditions
         run: |
-          COMMIT_MSG=$(echo "${{ github.event.head_commit.message }}" | tr '`' '\\`' | tr '\`' '\\`')
+          COMMIT_MSG=$(echo "${{ github.event.head_commit.message }}" | tr '\`' '\\\`')
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
             PR_SHA="${{ github.event.pull_request.head.sha }}"
             IS_PR=true
@@ -120,25 +108,17 @@ jobs:
             IS_PR=false
           fi
           MODIFIED_FILES=$(git diff --name-only HEAD^ HEAD)
-          echo "::set-output name=base_sha::${GITHUB_SHA}"
-          echo "::set-output name=pr_sha::${PR_SHA}"
-          echo "::set-output name=ci_skip::$(echo ${COMMIT_MSG} | grep -q '\[ci skip\]' && echo true || echo false)"
-          echo "::set-output name=cargo_toml_modified::$(echo ${MODIFIED_FILES} | grep -q '\*\*/Cargo.toml' && echo true || echo false)"
-          echo "::set-output name=src_modified::$(echo ${MODIFIED_FILES} | grep -q 'src/' && echo true || echo false)"
-          echo "::set-output name=tests_modified::$(echo ${MODIFIED_FILES} | grep -q ${{ inputs.tests_path }} && echo true || echo false)"
-          echo "::set-output name=is_pr::$IS_PR"
-          
+          echo "base_sha=${GITHUB_SHA}" >> $GITHUB_OUTPUT
+          echo "pr_sha=${PR_SHA}" >> $GITHUB_OUTPUT
+          echo "ci_skip=$(echo ${COMMIT_MSG} | grep -q '\[ci skip\]' && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "cargo_toml_modified=$(echo ${MODIFIED_FILES} | grep -q '\*\*/Cargo\.toml' && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "src_modified=$(echo ${MODIFIED_FILES} | grep -q 'src/' && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "tests_modified=$(echo ${MODIFIED_FILES} | grep -q ${{ inputs.tests_path }} && echo true || echo false)" >> $GITHUB_OUTPUT
+          echo "is_pr=$IS_PR" >> $GITHUB_OUTPUT
           if [[ -z "${{ secrets.GH_RELEASE_TOKEN }}" && -z "${{ secrets.GITHUB_TOKEN }}" ]]; then
             echo "::error::Release tokens do not exist or is empty."
-            echo "::info::Make sure you provide either one of these"
-            echo "::info::Make sure either of the tokens has proper release rights, also."
             exit 1
           fi
-          
-          echo "::info::Force build is set to ${{ inputs.force_build }}"
-          echo "::info::Force tests is set to ${{ inputs.force_tests }}"
-          echo "::info::Force deploy is set to ${{ inputs.force_deploy }}"
-          echo "::info::Modified files were: $(echo ${MODIFIED_FILES} | tr ' ' '\\n')"
 
       - name: Check explicit flags
         id: check_flags
@@ -152,38 +132,104 @@ jobs:
             MATCH_FOUND=1
           fi
           if [ $MATCH_FOUND -eq 0 ]; then
-            echo "::set-output name=release::true"
-            echo "::info::Release set to TRUE"
+            echo "release=true" >> $GITHUB_OUTPUT
           else
-            echo "::set-output name=release::false"
-            echo "::info::Release set to FALSE"
+            echo "release=false" >> $GITHUB_OUTPUT
           fi
-          echo $(echo "::set-output name=commit_msg::${message}" | tr '`' '\\`' | tr '\`' '\\`')
+          echo "commit_msg=$(echo "${message}" | tr '\`' '\\\`')" >> $GITHUB_OUTPUT
 
       - name: Extract release level from commit message and deploy
         id: extract_level
         run: |
           COMMIT_MSG="${{ steps.check_flags.outputs.commit_msg }}"
           LEVEL=$(echo "$COMMIT_MSG" | perl -nle 'print $1 if /${{ inputs.release_trigger_phrase }}/')
-          if [[ $LEVEL ]]
-          then
-            echo "::info::Setting the output 'release_level' to value: $LEVEL"
-            echo "::info:: >> this comes from the commit message..."
-            echo "::info::       ${{ steps.check_flags.outputs.commit_msg }}"
-            echo "::info:: >> ...matching this regex: ${{ inputs.release_trigger_phrase }}"
-            echo "::set-output name=release_level::$LEVEL"
+          if [[ $LEVEL ]]; then
+            echo "release_level=$LEVEL" >> $GITHUB_OUTPUT
           fi
   
+  msrv:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_RELEASE_TOKEN }}
+
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ inputs.toolchain }}
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      - name: Install cargo-msrv
+        run: cargo install cargo-msrv
+
+      - name: Find and update MSRV
+        if: github.event_name == 'push'
+        id: find_msrv
+        run: |
+          MSRV=$(cargo msrv --output-format json | jq -r '.msrv')
+          echo "Detected MSRV: $MSRV"
+          echo "MSRV=$MSRV" >> $GITHUB_ENV
+          cargo msrv verify --rust-version $MSRV
+          # Check if workspace mode is enabled
+          if grep -qE '^rust-version\.workspace\s*=\s*true' Cargo.toml; then
+            echo "Workspace mode detected."
+            if grep -qE '^\[workspace\.package\]' Cargo.toml; then
+              if grep -qE '^\s*rust-version\s*=' Cargo.toml; then
+                sed -i -E "s/^(\\s*rust-version\\s*=\\s*\").*(\")/\\1${MSRV}\\2/" Cargo.toml
+              else
+                sed -i '/^\[workspace\.package\]/a rust-version = "'"${MSRV}"'"' Cargo.toml
+              fi
+            elif grep -qE '^\[workspace\]' Cargo.toml && grep -qE '^\s*package\.rust-version' Cargo.toml; then
+              if grep -qE '^\s*package\.rust-version\s*=' Cargo.toml; then
+                sed -i -E "s/^(\\s*package\\.rust-version\\s*=\\s*\").*(\")/\\1${MSRV}\\2/" Cargo.toml
+              else
+                sed -i '/^\[workspace\]/a package.rust-version = "'"${MSRV}"'"' Cargo.toml
+              fi
+            else
+              echo "Warning: No [workspace.package] or [workspace] with package.rust-version found."
+            fi
+          else
+            if grep -qE '^package\.rust-version' Cargo.toml; then
+              sed -i -E "s/^(package\.rust-version\\s*=\\s*\").*(\")/\\1${MSRV}\\2/" Cargo.toml
+            else
+              sed -i '/^\[package\]/a rust-version = "'"${MSRV}"'"' Cargo.toml
+            fi
+          fi
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git add Cargo.toml
+          git commit -m "Update MSRV to $MSRV" || echo "No changes to commit"
+          git push
+
+      - name: Verify current MSRV
+        if: github.event_name == 'pull_request'
+        run: |
+          CURRENT_MSRV=$(grep -oP 'package\.rust-version\s*=\s*"\K[0-9]+\.[0-9]+\.[0-9]+(?=")' Cargo.toml)
+          echo "Current MSRV: $CURRENT_MSRV"
+          cargo msrv verify --rust-version $CURRENT_MSRV
   
   build:
-    needs: setup
+    needs: [ setup, msrv ]
     runs-on: ubuntu-latest
     if: |
       ((needs.setup.outputs.ci_skip == 'false' || needs.setup.outputs.ci_skip == false) &&
-      ((needs.setup.outputs.cargo_toml_modified == 'true' || needs.setup.outputs.cargo_toml_modified == true )||
-      (needs.setup.outputs.src_modified == 'true' || needs.setup.outputs.src_modified == true))) || 
+      ((needs.setup.outputs.cargo_toml_modified == 'true' || needs.setup.outputs.cargo_toml_modified == true) ||
+      (needs.setup.outputs.src_modified == 'true' || needs.setup.outputs.src_modified == true))) ||
       (inputs.force_build == true || inputs.force_build == 'true') ||
-      (needs.setup.outputs.release == 'true' || needs.setup.outputs.release == true )
+      (needs.setup.outputs.release == 'true' || needs.setup.outputs.release == true)
     steps:
       - name: Init crate workflow
         uses: orgrinrt/cicd/.github/actions/init_crate_workflow@main
@@ -197,54 +243,36 @@ jobs:
         run: |
           set -e
           set -o pipefail
-          
           rustup component add rustfmt
-
-          # Create a backup of current state
-          for file in $(find . -name '*.rs'); do
-            cp $file{,.bak}
-          done
-
-          # Format the code
+          for file in $(find . -name '*.rs'); do cp $file{,.bak}; done
           cargo fmt >/dev/null
-
-          # Compare the changes and output in a readable diff format
-          for file in $(find . -name '*.rs'); do
-              diff -U0 --minimal $file.bak $file || true
-              rm $file.bak
-          done
-
-          # Reset formatted files, to not include actual formatting in the commit
+          for file in $(find . -name '*.rs'); do diff -U0 --minimal $file.bak $file || true; rm $file.bak; done
           git checkout .
-
-          # Check if formatting is correct, will exit with code 1 if not, failing the step
           cargo fmt -- --check >/dev/null
 
       - name: Lints
-        run: |
-          set -e
-          set -o pipefail
-          rustup component add clippy
-          cargo clippy -- -D warnings
+        uses: actions-rs/clippy-check@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build
-        run: cargo build #--release
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
 
       - name: Check for warnings
         run: cargo rustc -- -D warnings
   
-  
   test:
     needs: [ setup, build ]
     runs-on: ubuntu-latest
-    
     if: |
       ((needs.setup.outputs.ci_skip == 'false' || needs.setup.outputs.ci_skip == false) &&
       ((needs.setup.outputs.cargo_toml_modified == 'true' || needs.setup.outputs.cargo_toml_modified == true) ||
       (needs.setup.outputs.src_modified == 'true' || needs.setup.outputs.src_modified == true) ||
-      (needs.setup.outputs.tests_modified == 'true' || needs.setup.outputs.tests_modified == true))) || 
+      (needs.setup.outputs.tests_modified == 'true' || needs.setup.outputs.tests_modified == true))) ||
       (inputs.force_tests == true || inputs.force_tests == 'true') ||
-      (needs.setup.outputs.release == 'true' || needs.setup.outputs.release == true )
+      (needs.setup.outputs.release == 'true' || needs.setup.outputs.release == true)
     steps:
       - name: Init crate workflow
         uses: orgrinrt/cicd/.github/actions/init_crate_workflow@main
@@ -259,20 +287,19 @@ jobs:
           ((needs.setup.outputs.release == false || needs.setup.outputs.release == 'false') &&
           (inputs.force_deploy == false || inputs.force_deploy == 'false')) ||
           (inputs.use_tarpaulin == false || inputs.use_tarpaulin == 'false')
-        run: |
-          set -e
-          set -o pipefail
-          cargo test --lib --all
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --lib --all
 
       - name: Run specific tests with feature flags
         if: |
-          inputs.test_feature_sets != '' && 
+          inputs.test_feature_sets != '' &&
           ((needs.setup.outputs.release == false || needs.setup.outputs.release == 'false') &&
           (inputs.force_deploy == false || inputs.force_deploy == 'false'))
         run: |
           IFS=', ' read -r -a feature_array <<< "${{ inputs.test_feature_sets }}"
-          for feature_set in "${feature_array[@]}"
-          do
+          for feature_set in "${feature_array[@]}"; do
             echo "Running tests with features: $feature_set"
             cargo test --no-default-features --features "$feature_set"
           done
@@ -280,22 +307,20 @@ jobs:
       - name: Run tests, generate code coverage and save as artifact
         if: |
           github.ref == 'refs/heads/main' &&
-          ((needs.setup.outputs.release == true || needs.setup.outputs.release == 'true') || 
-           (inputs.force_deploy == true || inputs.force_deploy == 'true')) &&
+          ((needs.setup.outputs.release == true || needs.setup.outputs.release == 'true') ||
+          (inputs.force_deploy == true || inputs.force_deploy == 'true')) &&
           (inputs.use_tarpaulin == true || inputs.use_tarpaulin == 'true')
-        run: |
-          set -e
-          set -o pipefail
-          cargo install cargo-tarpaulin
-          cargo tarpaulin --out Xml
+        uses: actions-rs/tarpaulin@v1
+        with:
+          args: --out Xml
         id: coverage
 
       - name: Upload coverage to GitHub Artifacts
         uses: actions/upload-artifact@v4
         if: |
           github.ref == 'refs/heads/main' &&
-          ((needs.setup.outputs.release == true || needs.setup.outputs.release == 'true') || 
-           (inputs.force_deploy == true || inputs.force_deploy == 'true')) &&
+          ((needs.setup.outputs.release == true || needs.setup.outputs.release == 'true') ||
+          (inputs.force_deploy == true || inputs.force_deploy == 'true')) &&
           (inputs.use_tarpaulin == true || inputs.use_tarpaulin == 'true')
         with:
           name: code-coverage-report
@@ -310,25 +335,23 @@ jobs:
           override: ${{ inputs.override }}
           only_cache: true
   
-  
   deploy:
     needs: [ setup, build, test ]
     environment: ${{ inputs.deploy_env_name }}
     runs-on: ubuntu-latest
     if: |
       ((((needs.setup.outputs.ci_skip == 'false' || needs.setup.outputs.ci_skip == false) ||
-      (needs.setup.outputs.release == 'true' || needs.setup.outputs.release == true ) &&
+      (needs.setup.outputs.release == 'true' || needs.setup.outputs.release == true) &&
       (needs.setup.outputs.is_pr == 'false' || needs.setup.outputs.is_pr == false)) &&
-      (github.event_name == 'push' && github.ref == 'refs/heads/main')) || 
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')) ||
       (inputs.force_deploy == true || inputs.force_deploy == 'true')) &&
-      (needs.setup.outputs.release == 'true' || needs.setup.outputs.release == true )
+      (needs.setup.outputs.release == 'true' || needs.setup.outputs.release == true)
     outputs:
       bump: ${{ steps.version.outputs.bump }}
       version: ${{ steps.version.outputs.version }}
       version_second: ${{ steps.version_second.outputs.version_second }}
       tag: ${{ steps.version_second.outputs.tag }}
     steps:
-
       - name: Init crate workflow
         uses: orgrinrt/cicd/.github/actions/init_crate_workflow@main
         with:
@@ -376,25 +399,12 @@ jobs:
           mkdir -p ~/.cargo
           echo "[registry]" > ~/.cargo/credentials
           echo "token = \"${{ secrets.CRATES_IO_TOKEN }}\"" >> ~/.cargo/credentials
-          
-          #      - name: Automatic version bump and deploy
-          #        if: |
-          #          ((inputs.auto_bump == 'true' || inputs.auto_bump == true) &&
-          #          (inputs.deploy_cratesio == 'true' || inputs.deploy_cratesio == true)) ||
-          #          steps.extract-level.outputs.release-level != ''
-          #        run: |
-          #          set -e
-          #          set -o pipefail
-          #          cargo release ${{ steps.extract-level.outputs.release-level }}  --no-confirm --push --execute
 
       - name: Automatic version bump but NO deploy
-        #        if: |
-        #          ((inputs.auto_bump == 'true' || inputs.auto_bump == true) &&
-        #          (inputs.deploy_cratesio == 'false' || inputs.deploy_cratesio == false))
         run: |
           set -e
           set -o pipefail
-          cargo release ${{ needs.setup.outputs.release_level }} --no-publish --no-confirm --execute 
+          cargo release ${{ needs.setup.outputs.release_level }} --no-publish --no-confirm --execute
 
       - name: Fetch the latest tag
         id: latest_tag
@@ -402,57 +412,37 @@ jobs:
           set -e
           set -o pipefail
           git fetch --tags
-          echo "::set-output name=tag::$(git describe --tags $(git rev-list --tags --max-count=1))"
+          echo "tag=$(git describe --tags $(git rev-list --tags --max-count=1))" >> $GITHUB_OUTPUT
 
-      - name: Update a version badge if one exists (assuming shields.io badge url format)
+      - name: Update a version badge if one exists
         id: update_badge
         run: |
           set -e
           set -o pipefail
-          
-          # Get the latest tag.
-          # If your tag names have a prefix remove them with `sed`. In the below command assumptions are there is prefix like `v` or `release-` followed by version numbers.
           LATEST_TAG=${{ steps.latest_tag.outputs.tag }}
-          
-          # If the tag starts with "v" followed by a number, remove the "v".
-          # Then, replace hyphens with underscores.
           VERSION_IDENTIFIER=${LATEST_TAG#v}
           VERSION_IDENTIFIER=${VERSION_IDENTIFIER//-/_}
-          
-          echo "Version Identifier for the badge is $VERSION_IDENTIFIER"
-          
-          # Double check whether the README.md file exists
           if [ ! -f README.md ]; then
-            echo 'No README.md file found'
+            echo "No README.md file found."
             exit 1
           fi
-          
-          # Update the version in the badge link in the README.md file.
-          # Match version-ANYTHING-color.svg, where ANYTHING doesn't include a hyphen.
-          sed -i.bak -E "s/(version-)[^-\]+(-.*\.svg)/\1$VERSION_IDENTIFIER\2/g" README.md
-          
-          # The above sed command creates a backup file `README.md.bak`. You may want to delete it if all is well.
-          rm README.md.bak
-
-          # Add changes to the stage
-          git add README.md
-          
-          # Commit the changes
-          git commit -m "Updated version badge to $VERSION_IDENTIFIER"
-          
-          # Push the change to the remote repository
-          git push
-          
-          # To make sure your local repository is up-to-date with the remote one, perform a git fetch
+          sed -i.bak -E "s/(version-)[^-\]+(-.*\.svg)/\1${VERSION_IDENTIFIER}\2/g" README.md
+          if git diff --quiet README.md; then
+            echo "No changes detected in README.md, skipping commit and push."
+            exit 0
+          else
+            rm README.md.bak
+            git add README.md
+            git commit -m "Updated version badge to ${VERSION_IDENTIFIER}"
+            git push
+          fi
           git fetch
 
-      - name: Deploy to crates.io
-        if: |
-          ((inputs.deploy_cratesio == 'true' || inputs.deploy_cratesio == true))
+      - name: Deploy to crates\.io
+        if: ((inputs.deploy_cratesio == 'true' || inputs.deploy_cratesio == true))
         run: |
           set -e
           set -o pipefail
-          # Publish the changes to crates.io
           cargo publish
 
       - name: Create GitHub Release
