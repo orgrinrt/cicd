@@ -41,6 +41,7 @@ runs:
       uses: Swatinem/rust-cache@v2
       with:
         prefix-key: ${{ inputs.cache-key-prefix }}
+        cache-all-crates: "true"
 
     - name: Install Rust
       if: inputs.only_cache != true || inputs.only_cache != 'true'
