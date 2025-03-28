@@ -151,6 +151,9 @@ jobs:
   msrv:
     needs: setup
     runs-on: ubuntu-latest
+    outputs:
+      has_msrv: ${{ steps.check_msrv.outputs.msrv_exists == 'true' || steps.find_msrv.outputs.msrv != '' }}
+      rust_version: ${{ steps.check_msrv.outputs.msrv || steps.find_msrv.outputs.msrv }}
     steps:
       - name: Init crate workflow
         uses: orgrinrt/cicd/.github/actions/init_crate_workflow@main
@@ -174,6 +177,7 @@ jobs:
             CURRENT_MSRV=$(grep -oP 'rust-version\s*=\s*"\K[0-9]+\.[0-9]+\.[0-9]+(?=")' Cargo.toml || \
                            grep -oP 'package\.rust-version\s*=\s*"\K[0-9]+\.[0-9]+\.[0-9]+(?=")' Cargo.toml)
             echo "MSRV=$CURRENT_MSRV" >> $GITHUB_ENV
+            echo "msrv=$CURRENT_MSRV" >> $GITHUB_OUTPUT
             echo "Current MSRV: $CURRENT_MSRV"
           else
             echo "msrv_exists=false" >> $GITHUB_OUTPUT
@@ -188,6 +192,7 @@ jobs:
           MSRV=$(cargo msrv find --output-format json | jq -r '.result.version')
           echo "Detected MSRV: $MSRV"
           echo "MSRV=$MSRV" >> $GITHUB_ENV
+          echo "msrv=$MSRV" >> $GITHUB_OUTPUT
           cargo msrv verify --rust-version $MSRV
           # Check if workspace mode is enabled
           if grep -qE '^rust-version\.workspace\s*=\s*true' Cargo.toml; then
@@ -231,6 +236,41 @@ jobs:
           toolchain: ${{ inputs.toolchain }}
           components: ${{ inputs.components }}
           override: ${{ inputs.override }}
+          only_cache: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+  
+  msrv_build:
+    needs: [ setup, msrv ]
+    runs-on: ubuntu-latest
+    if: |
+      needs.msrv.outputs.has_msrv == 'true' && 
+      (((needs.setup.outputs.ci_skip == 'false' || needs.setup.outputs.ci_skip == false) &&
+      ((needs.setup.outputs.cargo_toml_modified == 'true' || needs.setup.outputs.cargo_toml_modified == true) ||
+      (needs.setup.outputs.src_modified == 'true' || needs.setup.outputs.src_modified == true))) ||
+      (inputs.force_build == true || inputs.force_build == 'true') ||
+      (needs.setup.outputs.release == 'true' || needs.setup.outputs.release == true))
+    steps:
+      - name: Init crate workflow
+        uses: orgrinrt/cicd/.github/actions/init_crate_workflow@main
+        with:
+          profile: ${{ inputs.profile }}
+          toolchain: ${{ needs.msrv.outputs.rust_version }}
+          components: ${{ inputs.components }}
+          override: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build with MSRV
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+
+      - name: Update cache
+        uses: orgrinrt/cicd/.github/actions/init_crate_workflow@main
+        with:
+          profile: ${{ inputs.profile }}
+          toolchain: ${{ needs.msrv.outputs.rust_version }}
+          components: ${{ inputs.components }}
+          override: true
           only_cache: true
           token: ${{ secrets.GITHUB_TOKEN }}
   
@@ -287,8 +327,45 @@ jobs:
           only_cache: true
           token: ${{ secrets.GITHUB_TOKEN }}
   
+  msrv_test:
+    needs: [ setup, msrv, msrv_build ]
+    runs-on: ubuntu-latest
+    if: |
+      needs.msrv.outputs.has_msrv == 'true' && 
+      (((needs.setup.outputs.ci_skip == 'false' || needs.setup.outputs.ci_skip == false) &&
+      ((needs.setup.outputs.cargo_toml_modified == 'true' || needs.setup.outputs.cargo_toml_modified == true) ||
+      (needs.setup.outputs.src_modified == 'true' || needs.setup.outputs.src_modified == true) ||
+      (needs.setup.outputs.tests_modified == 'true' || needs.setup.outputs.tests_modified == true))) ||
+      (inputs.force_tests == true || inputs.force_tests == 'true') ||
+      (needs.setup.outputs.release == 'true' || needs.setup.outputs.release == true))
+    steps:
+      - name: Init crate workflow
+        uses: orgrinrt/cicd/.github/actions/init_crate_workflow@main
+        with:
+          profile: ${{ inputs.profile }}
+          toolchain: ${{ needs.msrv.outputs.rust_version }}
+          components: ${{ inputs.components }}
+          override: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run tests with MSRV
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --lib --all
+
+      - name: Update cache
+        uses: orgrinrt/cicd/.github/actions/init_crate_workflow@main
+        with:
+          profile: ${{ inputs.profile }}
+          toolchain: ${{ needs.msrv.outputs.rust_version }}
+          components: ${{ inputs.components }}
+          override: true
+          only_cache: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+  
   test:
-    needs: [ setup, build ]
+    needs: [ setup, build, msrv_test ]
     runs-on: ubuntu-latest
     if: |
       ((needs.setup.outputs.ci_skip == 'false' || needs.setup.outputs.ci_skip == false) &&
@@ -362,7 +439,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
   
   deploy:
-    needs: [ setup, build, test ]
+    needs: [ setup, build, test, msrv_test ]
     environment: ${{ inputs.deploy_env_name }}
     runs-on: ubuntu-latest
     if: |
@@ -399,8 +476,10 @@ jobs:
           set -o pipefail
           cargo doc --no-deps
 
-      - name: Install cargo-release
-        run: cargo install cargo-release
+      - name: Install tools
+        run: |
+          cargo install cargo-release
+          cargo install git-cliff
 
       - name: Update cache
         uses: orgrinrt/cicd/.github/actions/init_crate_workflow@main
@@ -419,6 +498,17 @@ jobs:
           git config --local user.name "GitHub Action"
           git config --local user.email "action@github.com"
 
+      - name: Check for workspace
+        id: check_workspace
+        run: |
+          set -e
+          if grep -q '^\[workspace\]' Cargo.toml; then
+            echo "is_workspace=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_workspace=false" >> $GITHUB_OUTPUT
+          fi
+
+
       - name: Setup cargo publish token
         if: (inputs.deploy_cratesio == true || inputs.deploy_cratesio == 'true')
         run: |
@@ -428,11 +518,30 @@ jobs:
           echo "[registry]" > ~/.cargo/credentials
           echo "token = \"${{ secrets.CRATES_IO_TOKEN }}\"" >> ~/.cargo/credentials
 
-      - name: Automatic version bump but NO deploy
+      - name: Generate changelog
+        id: changelog
+        run: |
+          git-cliff --latest --output CHANGELOG.md
+          echo "Generated changelog for release"
+
+      - name: Version bump and release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           set -e
           set -o pipefail
-          cargo release ${{ needs.setup.outputs.release_level }} --no-publish --no-confirm --execute
+          WORKSPACE_FLAG=""
+          if [[ "${{ steps.check_workspace.outputs.is_workspace }}" == "true" ]]; then
+            WORKSPACE_FLAG="--workspace"
+          fi
+          
+          if [[ "${{ inputs.deploy_cratesio }}" == "true" ]]; then
+            # Let cargo-release handle everything, passing changelog directly
+            cargo release ${{ needs.setup.outputs.release_level }} $WORKSPACE_FLAG --execute --github-release-body="$(cat CHANGELOG.md)"
+          else
+            # Only bump versions but don't publish
+            cargo release ${{ needs.setup.outputs.release_level }} $WORKSPACE_FLAG --no-publish --execute
+          fi
 
       - name: Fetch the latest tag
         id: latest_tag
@@ -442,44 +551,65 @@ jobs:
           git fetch --tags
           echo "tag=$(git describe --tags $(git rev-list --tags --max-count=1))" >> $GITHUB_OUTPUT
 
-      - name: Update a version badge if one exists
-        id: update_badge
+      - name: Update version references in README
+        id: update_readme
         run: |
           set -e
           set -o pipefail
           LATEST_TAG=${{ steps.latest_tag.outputs.tag }}
           VERSION_IDENTIFIER=${LATEST_TAG#v}
           VERSION_IDENTIFIER=${VERSION_IDENTIFIER//-/_}
+          
+          # Extract Rust version from Cargo.toml
+          if grep -q "rust-version" Cargo.toml; then
+            RUST_VERSION=$(grep "rust-version" Cargo.toml | sed -E 's/.*"([^"]+)".*/\1/')
+          elif grep -q "package.metadata.msrv" Cargo.toml; then
+            RUST_VERSION=$(grep "package.metadata.msrv" Cargo.toml | sed -E 's/.*"([^"]+)".*/\1/')
+          else
+            echo "No Rust version found in Cargo.toml, using default"
+            RUST_VERSION="stable"
+          fi
+          
+          echo "Using Rust version: ${RUST_VERSION}"
+          
           if [ ! -f README.md ]; then
             echo "No README.md file found."
             exit 1
           fi
-          sed -i.bak -E "s/(version-)[^-\]+(-.*\.svg)/\1${VERSION_IDENTIFIER}\2/g" README.md
+          
+          # Update version badge
+          sed -i.bak -E "s/(version-)[^-]+(-.*\.svg)/\1${VERSION_IDENTIFIER}\2/g" README.md
+          
+          # Update Rust version references using various patterns
+          sed -i -E "s/requires rust(c| toolchain)? (version|ver)? \`[0-9]+\.[0-9]+\.[0-9]+\`/requires rust\1 \2 \`${RUST_VERSION}\`/g" README.md
+          sed -i -E "s/(minimum|min|at least)? ?(version|ver)? ?of rust(c| toolchain)? \`[0-9]+\.[0-9]+\.[0-9]+\`/\1 \2 of rust\3 \`${RUST_VERSION}\`/g" README.md
+          sed -i -E "s/rust(c| toolchain)? \`[0-9]+\.[0-9]+\.[0-9]+\` or later/rust\1 \`${RUST_VERSION}\` or later/g" README.md
+          
           if git diff --quiet README.md; then
             echo "No changes detected in README.md, skipping commit and push."
             exit 0
           else
             rm README.md.bak
             git add README.md
-            git commit -m "Updated version badge to ${VERSION_IDENTIFIER}"
+            git commit -m "Updated version badge to ${VERSION_IDENTIFIER} and Rust version to ${RUST_VERSION}"
             git push
           fi
           git fetch
 
-      - name: Deploy to crates\.io
-        if: ((inputs.deploy_cratesio == 'true' || inputs.deploy_cratesio == true))
-        run: |
-          set -e
-          set -o pipefail
-          cargo publish
-
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.latest_tag.outputs.tag }}
-          release_name: Release ${{ steps.latest_tag.outputs.tag }}
-          draft: false
-          prerelease: false
+#      - name: Deploy to crates\.io
+#        if: ((inputs.deploy_cratesio == 'true' || inputs.deploy_cratesio == true))
+#        run: |
+#          set -e
+#          set -o pipefail
+#          cargo publish
+#
+#      - name: Create GitHub Release
+#        id: create_release
+#        uses: actions/create-release@v1
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GH_RELEASE_TOKEN || secrets.GITHUB_TOKEN }}
+#        with:
+#          tag_name: ${{ steps.latest_tag.outputs.tag }}
+#          release_name: Release ${{ steps.latest_tag.outputs.tag }}
+#          draft: false
+#          prerelease: false
