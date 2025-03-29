@@ -365,7 +365,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
   
   test:
-    needs: [ setup, build, msrv_test ]
+    needs: [ setup, build, msrv_build ]
     runs-on: ubuntu-latest
     if: |
       ((needs.setup.outputs.ci_skip == 'false' || needs.setup.outputs.ci_skip == false) &&
