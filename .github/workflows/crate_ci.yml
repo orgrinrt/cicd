@@ -537,7 +537,8 @@ jobs:
           
           if [[ "${{ inputs.deploy_cratesio }}" == "true" ]]; then
             # Let cargo-release handle everything, passing changelog directly
-            cargo release ${{ needs.setup.outputs.release_level }} $WORKSPACE_FLAG --execute --github-release-body="$(cat CHANGELOG.md)"
+            GITHUB_RELEASE_BODY=$(cat CHANGELOG.md)
+            cargo release ${{ needs.setup.outputs.release_level }} $WORKSPACE_FLAG --execute
           else
             # Only bump versions but don't publish
             cargo release ${{ needs.setup.outputs.release_level }} $WORKSPACE_FLAG --no-publish --execute
