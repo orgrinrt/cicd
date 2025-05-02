@@ -542,18 +542,46 @@ jobs:
           
           # Let cargo-release handle publishing when deploy_cratesio is true
           if [[ "${{ inputs.deploy_cratesio }}" == "true" ]]; then
-            cargo release ${{ needs.setup.outputs.release_level }} $WORKSPACE_FLAG --execute
+            cargo release ${{ needs.setup.outputs.release_level }} $WORKSPACE_FLAG --execute --no-confirm
           else
-            cargo release ${{ needs.setup.outputs.release_level }} $WORKSPACE_FLAG --no-publish --execute
+            cargo release ${{ needs.setup.outputs.release_level }} $WORKSPACE_FLAG --no-publish --execute --no-confirm
           fi
 
-      - name: Fetch the latest tag
+          # Allow time for tags to be available
+          sleep 5
+
+      - name: Fetch or create tag
         id: latest_tag
         run: |
           set -e
           set -o pipefail
-          git fetch --tags
-          echo "tag=$(git describe --tags $(git rev-list --tags --max-count=1))" >> $GITHUB_OUTPUT
+          # Force fetch all tags
+          git fetch --tags --force --prune --depth=0
+      
+          # List all tags for debugging
+          echo "All available tags:"
+          git tag -l
+      
+          # Try to get the latest tag
+          LATEST_TAG=$(git describe --tags $(git rev-list --tags --max-count=1) 2>/dev/null || echo "")
+      
+          # Check if we found a tag
+          if [ -z "$LATEST_TAG" ]; then
+            echo "No tag found. Creating tag based on Cargo.toml version"
+            VERSION=$(grep -m 1 '^version' Cargo.toml | sed 's/.*version = "\(.*\)"/\1/')
+            LATEST_TAG="v$VERSION"
+            
+            # Create and push the tag
+            echo "Creating tag: $LATEST_TAG"
+            git tag $LATEST_TAG
+            git push origin $LATEST_TAG
+            
+            echo "Created and pushed tag: $LATEST_TAG"
+          else
+            echo "Found existing tag: $LATEST_TAG"
+          fi
+      
+          echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
 
       - name: Update version references in README
         id: update_readme
