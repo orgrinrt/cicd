@@ -547,16 +547,13 @@ jobs:
             cargo release ${{ needs.setup.outputs.release_level }} $WORKSPACE_FLAG --no-publish --execute --no-confirm
           fi
 
-          # Allow time for tags to be available
-          sleep 5
-
       - name: Fetch or create tag
         id: latest_tag
         run: |
           set -e
           set -o pipefail
           # Force fetch all tags
-          git fetch --tags --force --prune --depth=0
+          git fetch --tags --force --prune
       
           # List all tags for debugging
           echo "All available tags:"
