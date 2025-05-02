@@ -525,6 +525,9 @@ jobs:
         run: |
           git-cliff --latest --output CHANGELOG.md
           echo "Generated changelog for release"
+          git add CHANGELOG.md
+          git commit -m "ci: generated CHANGELOG.md [ci skip]"
+          git push
 
       - name: Version bump and release
         env:
