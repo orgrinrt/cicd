@@ -137,7 +137,9 @@ jobs:
           else
             echo "release=false" >> $GITHUB_OUTPUT
           fi
-          echo "commit_msg=$(echo "${message}" | tr '\`' '\\\`')" >> $GITHUB_OUTPUT
+          echo "commit_msg<<EOL" >> $GITHUB_OUTPUT
+          echo "${message}" | tr '\`' '\\\`' >> $GITHUB_OUTPUT
+          echo "EOL" >> $GITHUB_OUTPUT
 
       - name: Extract release level from commit message and deploy
         id: extract_level
