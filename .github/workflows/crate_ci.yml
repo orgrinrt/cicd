@@ -542,7 +542,7 @@ jobs:
           
           # Let cargo-release handle publishing when deploy_cratesio is true
           if [[ "${{ inputs.deploy_cratesio }}" == "true" ]]; then
-            cargo release ${{ needs.setup.outputs.release_level }} $WORKSPACE_FLAG --execute --no-confirm
+            cargo release ${{ needs.setup.outputs.release_level }} $WORKSPACE_FLAG --execute --no-confirm --no-publish # defer publishing to after readme updated etc
           else
             cargo release ${{ needs.setup.outputs.release_level }} $WORKSPACE_FLAG --no-publish --execute --no-confirm
           fi
@@ -625,12 +625,12 @@ jobs:
           fi
           git fetch
       
-      #      - name: Deploy to crates.io
-      #        if: ((inputs.deploy_cratesio == 'true' || inputs.deploy_cratesio == true))
-      #        run: |
-      #          set -e
-      #          set -o pipefail
-      #          cargo publish
+      - name: Deploy to crates.io
+        if: ((inputs.deploy_cratesio == 'true' || inputs.deploy_cratesio == true))
+        run: |
+          set -e
+          set -o pipefail
+          cargo publish
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
